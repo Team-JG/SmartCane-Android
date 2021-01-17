@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SmartCane</string>
+    <string name="connect">connect</string>
+    <string name="disconnect">disconnect</string>
+</resources>
