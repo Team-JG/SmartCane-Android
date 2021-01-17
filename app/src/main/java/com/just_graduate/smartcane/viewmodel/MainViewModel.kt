@@ -38,15 +38,14 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
 
     fun onClickConnect() {
         if (connected.value == false || connected.value == null) {
-            if (repository.isBluetoothSupport()) {   // 블루투스 지원 체크
-                if (repository.isBluetoothEnabled()) { // 블루투스 활성화 체크
-                    //Progress Bar
+            if (repository.isBluetoothSupport()) {
+                if (repository.isBluetoothEnabled()) { // 블루투스가 활성화 되어있다면
+                    // Progress View.VISIBLE
                     setInProgress(true)
 
-                    //디바이스 스캔 시작
+                    // 지팡이 스캔 시작
                     repository.scanDevice()
                 } else {
-                    // 블루투스를 지원하지만 비활성 상태인 경우
                     // 블루투스를 활성 상태로 바꾸기 위해 사용자 동의 요청
                     _requestBleOn.value = Event(true)
                 }
@@ -62,6 +61,7 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
         repository.unregisterReceiver()
     }
 
+    // Data Binding 을 통해 파라미터에 EditText 값이 담김
     fun onClickSendData(sendTxt: String) {
         val byteArr = sendTxt.toByteArray(Charset.defaultCharset())
         repository.sendByteData(byteArr)

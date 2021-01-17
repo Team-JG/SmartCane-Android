@@ -7,18 +7,19 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
+import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-
 class Repository {
-
     var connected: MutableLiveData<Boolean?> = MutableLiveData(null)
     var progressState: MutableLiveData<String> = MutableLiveData("")
 
@@ -41,9 +42,12 @@ class Repository {
     private lateinit var sendByte: ByteArray
     var discovery_error = false
 
+
+
     fun isBluetoothSupport(): Boolean {
         return if (mBluetoothAdapter == null) {
-            Util.showNotification("Bluetooth 지원을 하지 않는 기기입니다.")
+            Util.showNotification("블루투스 미지원 기기")
+            textToSpeech("블루투스를 지원하지 않는 기기 입니다")
             false
         } else {
             true
@@ -54,7 +58,8 @@ class Repository {
         return if (!mBluetoothAdapter!!.isEnabled) {
             // 블루투스를 지원하지만 비활성 상태인 경우
             // 블루투스를 활성 상태로 바꾸기 위해 사용자 동의 요청
-            Util.showNotification("Bluetooth를 활성화 해 주세요.")
+            Util.showNotification("블루투스를 활성화 해 주세요")
+            textToSpeech("블루투스를 활성화 해 주세요")
             false
         } else {
             true
@@ -72,20 +77,20 @@ class Repository {
     }
 
     fun registerBluetoothReceiver() {
-        //intentfilter
         val stateFilter = IntentFilter()
-        stateFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED) //BluetoothAdapter.ACTION_STATE_CHANGED : 블루투스 상태변화 액션
+        stateFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED) // BluetoothAdapter.ACTION_STATE_CHANGED : 블루투스 상태변화 액션
         stateFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
-        stateFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED) //연결 확인
-        stateFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED) //연결 끊김 확인
+        stateFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED) // 연결 확인
+        stateFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED) // 연결 끊김 확인
         stateFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
-        stateFilter.addAction(BluetoothDevice.ACTION_FOUND) //기기 검색됨
-        stateFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED) //기기 검색 시작
-        stateFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED) //기기 검색 종료
+        stateFilter.addAction(BluetoothDevice.ACTION_FOUND) // 기기 검색됨
+        stateFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED) // 기기 검색 시작
+        stateFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED) // 기기 검색 종료
         stateFilter.addAction(BluetoothDevice.ACTION_PAIRING_REQUEST)
+
         mBluetoothStateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent) {
-                val action = intent.action //입력된 action
+                val action = intent.action // 입력된 action
                 if (action != null) {
                     Log.d("Bluetooth action", action)
                 }
@@ -93,7 +98,7 @@ class Repository {
                     intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
-                    name = device.name //broadcast를 보낸 기기의 이름을 가져온다.
+                    name = device.name // broadcast 를 보낸 기기의 이름을 가져온다.
                 }
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
@@ -122,6 +127,7 @@ class Repository {
                     }
                     BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
                     }
+
                     BluetoothDevice.ACTION_FOUND -> {
                         if (!foundDevice) {
                             val device_name = device!!.name
@@ -138,11 +144,11 @@ class Repository {
                     }
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                         if (!foundDevice) {
-                            Util.showNotification("디바이스를 찾을 수 없습니다. 다시 시도해 주세요.")
+                            Util.showNotification("디바이스를 찾을 수 없습니다.")
+                            textToSpeech("디바이스를 찾을 수 없습니다.")
                             inProgress.postValue(Event(false))
                         }
                     }
-
                 }
             }
         }
@@ -150,9 +156,7 @@ class Repository {
             mBluetoothStateReceiver,
             stateFilter
         )
-
     }
-
 
     @ExperimentalUnsignedTypes
     private fun connectToTargetedDevice(targetedDevice: BluetoothDevice?) {

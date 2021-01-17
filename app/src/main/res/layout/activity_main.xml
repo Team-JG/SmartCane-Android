@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android">
-
     <data>
         <import type="android.view.View"/>
         <variable
@@ -14,9 +13,10 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_connect"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
+            android:layout_marginStart="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="10dp"
             android:background="#787878"
@@ -31,7 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_marginBottom="200dp"
+            android:layout_marginBottom="250dp"
             android:orientation="horizontal">
 
             <EditText
@@ -59,7 +59,7 @@
         <ScrollView
             android:id="@+id/sv_read_data"
             android:layout_width="match_parent"
-            android:layout_height="450dp"
+            android:layout_height="500dp"
             android:layout_gravity="bottom"
             android:layout_margin="10dp"
             android:background="#e8e8e8">
