@@ -7,17 +7,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.speech.tts.TextToSpeech
+import android.support.v4.os.IResultReceiver
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.launch
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
+import kotlin.coroutines.CoroutineContext
 
 class Repository {
     var connected: MutableLiveData<Boolean?> = MutableLiveData(null)
@@ -42,8 +46,9 @@ class Repository {
     private lateinit var sendByte: ByteArray
     var discovery_error = false
 
-
-
+    /**
+     * 블루투스 지원 여부
+     */
     fun isBluetoothSupport(): Boolean {
         return if (mBluetoothAdapter == null) {
             Util.showNotification("블루투스 미지원 기기")
@@ -54,6 +59,9 @@ class Repository {
         }
     }
 
+    /**
+     * 블루투스 ON/OFF 여부
+     */
     fun isBluetoothEnabled(): Boolean {
         return if (!mBluetoothAdapter!!.isEnabled) {
             // 블루투스를 지원하지만 비활성 상태인 경우
@@ -66,17 +74,25 @@ class Repository {
         }
     }
 
+    /**
+     * 지팡이 기기 스캔 동작
+     */
     fun scanDevice() {
-        progressState.postValue("device 스캔 중...")
+        progressState.postValue("디바이스 스캔 중...")
+        textToSpeech("디바이스를 스캔하고 있습니다")
 
-        registerBluetoothReceiver()
+        registerBluetoothReceiver()  // BroadcastReceiver 인스턴스 생성
 
         val bluetoothAdapter = mBluetoothAdapter
         foundDevice = false
-        bluetoothAdapter?.startDiscovery() //블루투스 기기 검색 시작
+        bluetoothAdapter?.startDiscovery() // 지팡이 스캔 시작
     }
 
-    fun registerBluetoothReceiver() {
+    /**
+     * 블루투스 리시버 등록
+     */
+    @ExperimentalUnsignedTypes
+    private fun registerBluetoothReceiver() {
         val stateFilter = IntentFilter()
         stateFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED) // BluetoothAdapter.ACTION_STATE_CHANGED : 블루투스 상태변화 액션
         stateFilter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
@@ -98,7 +114,7 @@ class Repository {
                     intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
-                    name = device.name // broadcast 를 보낸 기기의 이름을 가져온다.
+                    name = device.name // broadcast 를 보낸 기기의 이름을 가져옴
                 }
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
@@ -132,11 +148,13 @@ class Repository {
                         if (!foundDevice) {
                             val device_name = device!!.name
                             val device_Address = device.address
-                            //블루투스 기기 이름의 앞글자가 "HM"으로 시작하는 기기만을 검색한다
+
+                            // 블루투스 기기 이름의 앞글자가 "HC"으로 시작하는 기기만을 검색 (HC-06 모듈 사용)
                             if (device_name != null && device_name.length > 3) {
-                                if (device_name.substring(0, 3) == "HM") {
+                                if (device_name.substring(0, 3) == "HC") {
                                     targetDevice = device
                                     foundDevice = true
+                                    textToSpeech("발견한 디바이스를 연결합니다.")
                                     connectToTargetedDevice(targetDevice)
                                 }
                             }
@@ -158,25 +176,25 @@ class Repository {
         )
     }
 
+    /**
+     * 스캔한 지팡이 기기와 블루투스 연결 with Coroutine
+     */
     @ExperimentalUnsignedTypes
     private fun connectToTargetedDevice(targetedDevice: BluetoothDevice?) {
         progressState.postValue("${targetDevice?.name}에 연결중..")
 
-        val thread = Thread {
+        CoroutineScope(Default).launch {
             //선택된 기기의 이름을 갖는 bluetooth device의 object
             val uuid = UUID.fromString(SPP_UUID)
             try {
                 // 소켓 생성
                 socket = targetedDevice?.createRfcommSocketToServiceRecord(uuid)
-
                 socket?.connect()
 
-                /**
-                 * After Connect Device
-                 */
                 connected.postValue(true)
                 mOutputStream = socket?.outputStream
                 mInputStream = socket?.inputStream
+
                 // 데이터 수신
                 beginListenForData()
 
@@ -191,12 +209,11 @@ class Repository {
                 }
             }
         }
-
-        //연결 thread를 수행한다
-        thread.start()
     }
 
-
+    /**
+     * 블루투스 연결 해제
+     */
     fun disconnect() {
         try {
             socket?.close()
@@ -206,6 +223,9 @@ class Repository {
         }
     }
 
+    /**
+     * 블루투스 리시버 등록 해제
+     */
     fun unregisterReceiver() {
         if (mBluetoothStateReceiver != null) {
             MyApplication.applicationContext().unregisterReceiver(mBluetoothStateReceiver)
@@ -217,14 +237,14 @@ class Repository {
      * 블루투스 데이터 송신
      */
     fun sendByteData(data: ByteArray) {
-        Thread {
+        CoroutineScope(Default).launch {
             try {
                 mOutputStream?.write(data) // 프로토콜 전송
             } catch (e: Exception) {
                 // 문자열 전송 도중 오류가 발생한 경우.
                 e.printStackTrace()
             }
-        }.run()
+        }
     }
 
     /**
@@ -234,7 +254,7 @@ class Repository {
      */
     private val m_ByteBuffer: ByteBuffer = ByteBuffer.allocateDirect(8)
 
-    // byte -> uint
+    // Byte -> uInt
     fun ByteToUint(data: ByteArray?, offset: Int, endian: ByteOrder): Long {
         synchronized(m_ByteBuffer) {
             m_ByteBuffer.clear()
@@ -263,7 +283,6 @@ class Repository {
      */
     @ExperimentalUnsignedTypes
     fun beginListenForData() {
-
         val mWorkerThread = Thread {
             while (!Thread.currentThread().isInterrupted) {
                 try {
@@ -298,6 +317,4 @@ class Repository {
         //데이터 수신 thread 시작
         mWorkerThread.start()
     }
-
-
 }

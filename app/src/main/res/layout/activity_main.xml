@@ -73,6 +73,7 @@
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />
+
         </ScrollView>
 
         <LinearLayout
@@ -99,6 +100,7 @@
                 android:layout_marginEnd="10dp"
                 android:text="@{viewModel.txtProgress}"
                 android:textColor="@color/white" />
+
         </LinearLayout>
     </FrameLayout>
 </layout>

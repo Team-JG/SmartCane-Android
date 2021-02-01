@@ -36,6 +36,9 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
         repository.inProgress.value = Event(en)
     }
 
+    /**
+     * 블루투스 연결 버튼 눌렀을 때
+     */
     fun onClickConnect() {
         if (connected.value == false || connected.value == null) {
             if (repository.isBluetoothSupport()) {
@@ -57,15 +60,20 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
         }
     }
 
+    /**
+     * 블루투스 리시버 등록 해제
+     */
     fun unregisterReceiver() {
         repository.unregisterReceiver()
     }
 
-    // Data Binding 을 통해 파라미터에 EditText 값이 담김
+    /**
+     * Data Binding 을 통해 파라미터에 EditText 값이 담김
+     */
     fun onClickSendData(sendTxt: String) {
         val byteArr = sendTxt.toByteArray(Charset.defaultCharset())
         repository.sendByteData(byteArr)
-        Util.showNotification("send data!")
+        Util.showNotification("Send Data!")
     }
 
 }

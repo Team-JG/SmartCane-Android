@@ -24,9 +24,7 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 
 
 class MainActivity : AppCompatActivity() {
-
     private val viewModel by viewModel<MainViewModel>()
-
     lateinit var svReadData: ScrollView
 
     var mBluetoothAdapter: BluetoothAdapter? = null
@@ -39,12 +37,14 @@ class MainActivity : AppCompatActivity() {
             DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         binding.viewModel = viewModel
-
+        
         svReadData = findViewById(R.id.sv_read_data)
 
         if (!hasPermissions(this, PERMISSIONS)) {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
+
+        // View Component 들이 ViewModel Observing 시작
         initObserving()
     }
 
@@ -56,10 +56,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-
     private fun initObserving() {
-
-        //Progress
+        // Progress
         viewModel.inProgress.observe(this, {
             if (it.getContentIfNotHandled() == true) {
                 viewModel.inProgressView.set(true)
@@ -68,18 +66,18 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        //Progress text
+        // Progress text
         viewModel.progressState.observe(this, {
             viewModel.txtProgress.set(it)
         })
 
-        //Bluetooth On 요청
+        // Bluetooth On 요청
         viewModel.requestBleOn.observe(this, {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startForResult.launch(enableBtIntent)
         })
 
-        //Bluetooth Connect/Disconnect Event
+        // Bluetooth Connect/Disconnect Event
         viewModel.connected.observe(this, {
             if (it != null) {
                 if (it) {
@@ -94,7 +92,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        //Bluetooth Connect Error
+        // Bluetooth Connect Error
         viewModel.connectError.observe(this, {
             Util.showNotification("Connect Error. Please check the device")
             viewModel.setInProgress(false)
@@ -143,7 +141,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.txtRead.set("here you can see the message come")
+        viewModel.txtRead.set("Here you can see the message come")
     }
 
     override fun onPause() {
@@ -152,7 +150,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        //super.onBackPressed()
+        // super.onBackPressed()
         viewModel.setInProgress(false)
     }
 
