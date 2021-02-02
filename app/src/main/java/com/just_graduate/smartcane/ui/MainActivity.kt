@@ -25,7 +25,6 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : AppCompatActivity() {
     private val viewModel by viewModel<MainViewModel>()
-    lateinit var svReadData: ScrollView
 
     var mBluetoothAdapter: BluetoothAdapter? = null
     var recv: String = ""
@@ -37,8 +36,6 @@ class MainActivity : AppCompatActivity() {
             DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         binding.viewModel = viewModel
-        
-        svReadData = findViewById(R.id.sv_read_data)
 
         if (!hasPermissions(this, PERMISSIONS)) {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
@@ -102,7 +99,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.putTxt.observe(this, {
             if (it != null) {
                 recv += it
-                svReadData.fullScroll(View.FOCUS_DOWN)
                 viewModel.txtRead.set(recv)
             }
         })

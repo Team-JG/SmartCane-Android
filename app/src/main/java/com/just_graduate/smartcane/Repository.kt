@@ -7,21 +7,18 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.support.v4.os.IResultReceiver
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.launch
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
-import kotlin.coroutines.CoroutineContext
 
 class Repository {
     var connected: MutableLiveData<Boolean?> = MutableLiveData(null)
@@ -133,25 +130,31 @@ class Repository {
                             }
                         }
                     }
+
                     BluetoothDevice.ACTION_ACL_CONNECTED -> {
 
                     }
+
                     BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+
                     }
+
                     BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         connected.postValue(false)
                     }
+
                     BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
+
                     }
 
                     BluetoothDevice.ACTION_FOUND -> {
                         if (!foundDevice) {
-                            val device_name = device!!.name
-                            val device_Address = device.address
+                            val deviceName = device!!.name
+//                            val deviceAddress = device.address (일단 미사용)
 
                             // 블루투스 기기 이름의 앞글자가 "HC"으로 시작하는 기기만을 검색 (HC-06 모듈 사용)
-                            if (device_name != null && device_name.length > 3) {
-                                if (device_name.substring(0, 3) == "HC") {
+                            if (deviceName != null && deviceName.length > 3) {
+                                if (deviceName == "SmartCane") {
                                     targetDevice = device
                                     foundDevice = true
                                     textToSpeech("발견한 디바이스를 연결합니다.")
