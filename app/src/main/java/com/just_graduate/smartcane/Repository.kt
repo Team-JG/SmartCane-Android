@@ -41,15 +41,14 @@ class Repository {
     var foundDevice: Boolean = false
 
     private lateinit var sendByte: ByteArray
-    var discovery_error = false
 
     /**
      * 블루투스 지원 여부
      */
     fun isBluetoothSupport(): Boolean {
         return if (mBluetoothAdapter == null) {
-            Util.showNotification("블루투스 미지원 기기")
-            textToSpeech("블루투스를 지원하지 않는 기기 입니다")
+            Util.showNotification(MyApplication.applicationContext().getString(R.string.bt_disable))
+            textToSpeech(MyApplication.applicationContext().getString(R.string.bt_disable))
             false
         } else {
             true
@@ -63,8 +62,8 @@ class Repository {
         return if (!mBluetoothAdapter!!.isEnabled) {
             // 블루투스를 지원하지만 비활성 상태인 경우
             // 블루투스를 활성 상태로 바꾸기 위해 사용자 동의 요청
-            Util.showNotification("블루투스를 활성화 해 주세요")
-            textToSpeech("블루투스를 활성화 해 주세요")
+            Util.showNotification(MyApplication.applicationContext().getString(R.string.plz_able_bt))
+            textToSpeech(MyApplication.applicationContext().getString(R.string.plz_able_bt))
             false
         } else {
             true
@@ -75,8 +74,8 @@ class Repository {
      * 지팡이 기기 스캔 동작
      */
     fun scanDevice() {
-        progressState.postValue("디바이스 스캔 중...")
-        textToSpeech("디바이스를 스캔하고 있습니다")
+        progressState.postValue("지팡이 스캔 중...")
+        textToSpeech(MyApplication.applicationContext().getString(R.string.finding_cane))
 
         registerBluetoothReceiver()  // BroadcastReceiver 인스턴스 생성
 
@@ -108,7 +107,7 @@ class Repository {
                     Log.d("Bluetooth action", action)
                 }
                 val device =
-                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
                     name = device.name // broadcast 를 보낸 기기의 이름을 가져옴
@@ -116,8 +115,8 @@ class Repository {
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
-                            BluetoothAdapter.EXTRA_STATE,
-                            BluetoothAdapter.ERROR
+                                BluetoothAdapter.EXTRA_STATE,
+                                BluetoothAdapter.ERROR
                         )
                         when (state) {
                             BluetoothAdapter.STATE_OFF -> {
@@ -157,7 +156,7 @@ class Repository {
                                 if (deviceName == "SmartCane") {
                                     targetDevice = device
                                     foundDevice = true
-                                    textToSpeech("발견한 디바이스를 연결합니다.")
+                                    textToSpeech(context!!.getString(R.string.try_connect_cane))
                                     connectToTargetedDevice(targetDevice)
                                 }
                             }
@@ -165,8 +164,8 @@ class Repository {
                     }
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                         if (!foundDevice) {
-                            Util.showNotification("디바이스를 찾을 수 없습니다.")
-                            textToSpeech("디바이스를 찾을 수 없습니다.")
+                            Util.showNotification(context!!.getString(R.string.cannot_find_cane))
+                            textToSpeech(context.getString(R.string.cannot_find_cane))
                             inProgress.postValue(Event(false))
                         }
                     }
@@ -174,8 +173,8 @@ class Repository {
             }
         }
         MyApplication.applicationContext().registerReceiver(
-            mBluetoothStateReceiver,
-            stateFilter
+                mBluetoothStateReceiver,
+                stateFilter
         )
     }
 

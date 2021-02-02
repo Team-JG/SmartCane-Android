@@ -2,4 +2,11 @@
     <string name="app_name">SmartCane</string>
     <string name="connect">연결</string>
     <string name="disconnect">연결 해제</string>
+    <string name="success_connect_cane">지팡이와 연결되었습니다.</string>
+    <string name="disconnect_connect_cane">지팡이와 연결이 해제되었습니다.</string>
+    <string name="try_connect_cane">발견한 지팡이를 연결합니다.</string>
+    <string name="cannot_find_cane">지팡이를 찾을 수 없습니다.</string>
+    <string name="finding_cane">지팡이를 찾고 있습니다</string>
+    <string name="plz_able_bt">블루투스를 활성화 해주세요</string>
+    <string name="bt_disable">블루투스를 지원하지 않는 기기 입니다</string>
 </resources>

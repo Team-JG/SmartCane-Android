@@ -1,51 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <data>
+        <import type="android.view.View" />
+
+        <variable
+            name="viewModel"
+            type="com.just_graduate.smartcane.viewmodel.MainViewModel" />
+    </data>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <LinearLayout
-            android:padding="24dp"
-            android:layout_marginTop="100dp"
-            android:layout_gravity="center"
-            android:orientation="vertical"
             android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="100dp"
             android:layout_marginBottom="250dp"
-            android:layout_height="wrap_content">
+            android:orientation="vertical"
+            android:padding="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <EditText
-                    android:id="@+id/txt_send"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1" />
-
                 <Button
-                    android:id="@+id/btn_send"
+                    android:id="@+id/btn_send1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_margin="10dp"
+                    android:layout_weight="1"
                     android:background="#1E6CBA"
                     android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(txtSend.getText().toString())}"
-                    android:text="send"
+                    android:onClick="@{()->viewModel.onClickSendData(1)}"
+                    android:text="완전 왼쪽"
+                    android:textColor="@color/white"
+                    android:textStyle="bold" />
+
+
+                <Button
+                    android:id="@+id/btn_send5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:layout_weight="1"
+                    android:background="#1E6CBA"
+                    android:enabled="@{viewModel.btnConnected?true:false}"
+                    android:onClick="@{()->viewModel.onClickSendData(5)}"
+                    android:text="완전 오른쪽"
+                    android:textColor="@color/white"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_send2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:layout_weight="1"
+                    android:background="#1E6CBA"
+                    android:enabled="@{viewModel.btnConnected?true:false}"
+                    android:onClick="@{()->viewModel.onClickSendData(2)}"
+                    android:text="왼쪽"
+                    android:textColor="@color/white"
+                    android:textStyle="bold" />
+
+
+                <Button
+                    android:id="@+id/btn_send3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:layout_weight="1"
+                    android:background="#1E6CBA"
+                    android:enabled="@{viewModel.btnConnected?true:false}"
+                    android:onClick="@{()->viewModel.onClickSendData(3)}"
+                    android:text="직진"
+                    android:textColor="@color/white"
+                    android:textStyle="bold" />
+
+
+                <Button
+                    android:id="@+id/btn_send4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:layout_weight="1"
+                    android:background="#1E6CBA"
+                    android:enabled="@{viewModel.btnConnected?true:false}"
+                    android:onClick="@{()->viewModel.onClickSendData(4)}"
+                    android:text="오른쪽"
                     android:textColor="@color/white"
                     android:textStyle="bold" />
 
             </LinearLayout>
 
             <TextView
-                android:layout_marginTop="32dp"
-                android:text="수신된 데이터"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="수신된 데이터" />
 
             <TextView
                 android:id="@+id/txt_read"
@@ -104,13 +167,4 @@
             android:textColor="@color/white"
             android:textStyle="bold" />
     </FrameLayout>
-
-    <data>
-
-        <import type="android.view.View" />
-
-        <variable
-            name="viewModel"
-            type="com.just_graduate.smartcane.viewmodel.MainViewModel" />
-    </data>
 </layout>

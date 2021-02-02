@@ -19,6 +19,7 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import com.just_graduate.smartcane.util.*
+import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -80,11 +81,13 @@ class MainActivity : AppCompatActivity() {
                 if (it) {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(true)
-                    Util.showNotification("디바이스와 연결되었습니다.")
+                    Util.showNotification(getString(R.string.success_connect_cane))
+                    textToSpeech(getString(R.string.success_connect_cane))
                 } else {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(false)
-                    Util.showNotification("디바이스와 연결이 해제되었습니다.")
+                    Util.showNotification(getString(R.string.disconnect_connect_cane))
+                    textToSpeech(getString(R.string.disconnect_connect_cane))
                 }
             }
         })

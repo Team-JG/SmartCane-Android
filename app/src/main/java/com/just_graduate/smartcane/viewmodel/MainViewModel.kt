@@ -65,13 +65,15 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
      */
     fun unregisterReceiver() {
         repository.unregisterReceiver()
+
     }
 
     /**
      * Data Binding 을 통해 파라미터에 EditText 값이 담김
      */
-    fun onClickSendData(sendTxt: String) {
-        val byteArr = sendTxt.toByteArray(Charset.defaultCharset())
+    fun onClickSendData(command: Int) {
+        val commandString = command.toString()
+        val byteArr = commandString.toByteArray(Charset.defaultCharset())
         repository.sendByteData(byteArr)
         Util.showNotification("Send Data!")
     }
