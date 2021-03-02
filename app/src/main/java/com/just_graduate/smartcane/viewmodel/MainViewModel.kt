@@ -75,7 +75,6 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
         val commandString = command.toString()
         val byteArr = commandString.toByteArray(Charset.defaultCharset())
         repository.sendByteData(byteArr)
-        Util.showNotification("Send Data!")
     }
 
 }

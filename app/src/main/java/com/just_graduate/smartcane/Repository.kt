@@ -40,8 +40,6 @@ class Repository {
 
     var foundDevice: Boolean = false
 
-    private lateinit var sendByte: ByteArray
-
     /**
      * 블루투스 지원 여부
      */
@@ -74,7 +72,7 @@ class Repository {
      * 지팡이 기기 스캔 동작
      */
     fun scanDevice() {
-        progressState.postValue("지팡이 스캔 중...")
+        progressState.postValue("지팡이 스캔 중")
         textToSpeech(MyApplication.applicationContext().getString(R.string.finding_cane))
 
         registerBluetoothReceiver()  // BroadcastReceiver 인스턴스 생성
@@ -149,9 +147,8 @@ class Repository {
                     BluetoothDevice.ACTION_FOUND -> {
                         if (!foundDevice) {
                             val deviceName = device!!.name
-//                            val deviceAddress = device.address (일단 미사용)
 
-                            // 블루투스 기기 이름의 앞글자가 "HC"으로 시작하는 기기만을 검색 (HC-06 모듈 사용)
+                            // "SmartCane" 이라는 기기만 연결
                             if (deviceName != null && deviceName.length > 3) {
                                 if (deviceName == "SmartCane") {
                                     targetDevice = device
