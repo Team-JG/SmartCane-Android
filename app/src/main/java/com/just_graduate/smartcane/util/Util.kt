@@ -7,7 +7,7 @@ import java.util.*
 
 class Util {
     companion object{
-        fun showNotification(msg: String) {
+        fun showToast(msg: String) {
             Toast.makeText(MyApplication.applicationContext(), msg, Toast.LENGTH_LONG).show()
         }
 

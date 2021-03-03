@@ -12,38 +12,29 @@ import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
-import android.hardware.Sensor
-import android.hardware.SensorManager
-import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CaptureRequest
-import android.media.ImageReader
-import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
-import android.util.DisplayMetrics
+import android.net.Uri
 import android.util.Log
-import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.just_graduate.smartcane.util.*
+import com.just_graduate.smartcane.util.Util.Companion.showToast
 import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
 import java.lang.Exception
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 
 
@@ -86,7 +77,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun takePhoto() {
+        // 참조 변수 (계속하여 변경되는 이미지 캡쳐본 대응)
+        val imageCapture = imageCapture ?: return
 
+        // 현재 시각을 파일명으로 하여 이미지 객체 생성
+        val photoFile = File(
+            outputDirectory,
+            SimpleDateFormat(FILENAME_FORMAT, Locale.KOREA)
+                .format(System.currentTimeMillis()) + ".jpg"
+        )
+
+        // 이미지 캡쳐를 하되, 이미지 객체 와 메타 데이터를 함께 담을 수 있도록 OutputOption 선언
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        // 사진이 찍히고 난 뒤 실행되는 Listener 동작 정의
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    val savedUri = Uri.fromFile(photoFile)
+                    Log.d(TAG, "Capture Succeeded: $savedUri")
+                    showToast("Capture Succeeded: $savedUri")
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e(TAG, "Capture Failed: ${exception.message}", exception)
+                }
+            }
+        )
     }
 
     private fun startCamera() {
@@ -98,21 +117,24 @@ class MainActivity : AppCompatActivity() {
             // 카메라 프리뷰 (XML 에서 만들었던 PreviewView 사용)
             val preview = Preview.Builder()
                 .build()
-                .also{
+                .also {
                     it.setSurfaceProvider(viewFinder.createSurfaceProvider())
                 }
+
+            imageCapture = ImageCapture.Builder().build()
+
             // 후면 카메라 기본값으로 사용
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            try{
+            try {
                 // 사용 중이던 CameraProvider 모두 unbind() 후 rebinding 함
                 cameraProvider.unbindAll()
 
                 // CameraProvider bind() -> CameraSelector, Preview 객체 넘김
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview
+                    this, cameraSelector, preview, imageCapture
                 )
-            }catch (exc: Exception){
+            } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
@@ -163,12 +185,12 @@ class MainActivity : AppCompatActivity() {
                 if (it) {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(true)
-                    Util.showNotification(getString(R.string.success_connect_cane))
+                    Util.showToast(getString(R.string.success_connect_cane))
                     textToSpeech(getString(R.string.success_connect_cane))
                 } else {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(false)
-                    Util.showNotification(getString(R.string.disconnect_connect_cane))
+                    Util.showToast(getString(R.string.disconnect_connect_cane))
                     textToSpeech(getString(R.string.disconnect_connect_cane))
                 }
             }
@@ -176,7 +198,7 @@ class MainActivity : AppCompatActivity() {
 
         // Bluetooth Connect Error
         viewModel.connectError.observe(this, {
-            Util.showNotification("연결 도중 오류가 발생하였습니다. 기기를 확인해주세요.")
+            Util.showToast("연결 도중 오류가 발생하였습니다. 기기를 확인해주세요.")
             viewModel.setInProgress(false)
         })
 

@@ -45,7 +45,7 @@ class Repository {
      */
     fun isBluetoothSupport(): Boolean {
         return if (mBluetoothAdapter == null) {
-            Util.showNotification(MyApplication.applicationContext().getString(R.string.bt_disable))
+            Util.showToast(MyApplication.applicationContext().getString(R.string.bt_disable))
             textToSpeech(MyApplication.applicationContext().getString(R.string.bt_disable))
             false
         } else {
@@ -60,7 +60,7 @@ class Repository {
         return if (!mBluetoothAdapter!!.isEnabled) {
             // 블루투스를 지원하지만 비활성 상태인 경우
             // 블루투스를 활성 상태로 바꾸기 위해 사용자 동의 요청
-            Util.showNotification(MyApplication.applicationContext().getString(R.string.plz_able_bt))
+            Util.showToast(MyApplication.applicationContext().getString(R.string.plz_able_bt))
             textToSpeech(MyApplication.applicationContext().getString(R.string.plz_able_bt))
             false
         } else {
@@ -161,7 +161,7 @@ class Repository {
                     }
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                         if (!foundDevice) {
-                            Util.showNotification(context!!.getString(R.string.cannot_find_cane))
+                            Util.showToast(context!!.getString(R.string.cannot_find_cane))
                             textToSpeech(context.getString(R.string.cannot_find_cane))
                             inProgress.postValue(Event(false))
                         }

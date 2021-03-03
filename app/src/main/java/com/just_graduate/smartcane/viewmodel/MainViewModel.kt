@@ -53,7 +53,7 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
                     _requestBleOn.value = Event(true)
                 }
             } else { //블루투스 지원 불가
-                Util.showNotification("Bluetooth is not supported.")
+                Util.showToast("Bluetooth is not supported.")
             }
         } else {
             repository.disconnect()
