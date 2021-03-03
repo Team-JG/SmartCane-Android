@@ -23,6 +23,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button
@@ -30,13 +31,19 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
+import java.lang.Exception
 import java.util.concurrent.ExecutorService
 
 
@@ -47,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraCaptureButton: Button
+    private lateinit var viewFinder: PreviewView
 
     private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
@@ -62,11 +70,12 @@ class MainActivity : AppCompatActivity() {
         if (!hasPermissions(this, PERMISSIONS)) {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
-
+        viewFinder = findViewById(R.id.viewFinder)
         cameraCaptureButton = findViewById(R.id.camera_capture_button)
 
         // View Component 들이 ViewModel Observing 시작
         initObserving()
+        startCamera()
 
         cameraCaptureButton.setOnClickListener {
             takePhoto()
@@ -76,9 +85,40 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun takePhoto() {}
+    private fun takePhoto() {
 
-    private fun startCamera() {}
+    }
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        // 인자로 Runnable 객체, getMainExecutor (Main thread 에서 동작하는 Executor 리턴함) 넘김
+        cameraProviderFuture.addListener(Runnable {
+            // 앱 Lifecycle 에 카메라 Lifecycle 바인드
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            // 카메라 프리뷰 (XML 에서 만들었던 PreviewView 사용)
+            val preview = Preview.Builder()
+                .build()
+                .also{
+                    it.setSurfaceProvider(viewFinder.createSurfaceProvider())
+                }
+            // 후면 카메라 기본값으로 사용
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+            try{
+                // 사용 중이던 CameraProvider 모두 unbind() 후 rebinding 함
+                cameraProvider.unbindAll()
+
+                // CameraProvider bind() -> CameraSelector, Preview 객체 넘김
+                cameraProvider.bindToLifecycle(
+                    this, cameraSelector, preview
+                )
+            }catch (exc: Exception){
+                Log.e(TAG, "Use case binding failed", exc)
+            }
+
+        }, ContextCompat.getMainExecutor(this))
+
+    }
 
     private fun getOutputDirectory(): File {
         val mediaDir = externalMediaDirs.firstOrNull()?.let {
