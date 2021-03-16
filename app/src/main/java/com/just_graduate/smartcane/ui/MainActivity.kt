@@ -12,20 +12,20 @@ import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.just_graduate.smartcane.tflite.ImageClassifier
 import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.Companion.showToast
 import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
@@ -33,6 +33,7 @@ import com.just_graduate.smartcane.viewmodel.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
 import java.lang.Exception
+import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -49,6 +50,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
+
+    private var imageClassifier = ImageClassifier(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,32 +83,36 @@ class MainActivity : AppCompatActivity() {
         // 참조 변수 (계속하여 변경되는 이미지 캡쳐본 대응)
         val imageCapture = imageCapture ?: return
 
-        // 현재 시각을 파일명으로 하여 이미지 객체 생성
-        val photoFile = File(
-            outputDirectory,
-            SimpleDateFormat(FILENAME_FORMAT, Locale.KOREA)
-                .format(System.currentTimeMillis()) + ".jpg"
-        )
-
-        // 이미지 캡쳐를 하되, 이미지 객체 와 메타 데이터를 함께 담을 수 있도록 OutputOption 선언
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-
         // 사진이 찍히고 난 뒤 실행되는 Listener 동작 정의
+        // CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
+        // Bitmap 형식의 이미지를 핸들링할 수 있도록 함
         imageCapture.takePicture(
-            outputOptions,
             ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    val savedUri = Uri.fromFile(photoFile)
-                    Log.d(TAG, "Capture Succeeded: $savedUri")
-                    showToast("Capture Succeeded: $savedUri")
-                }
-
+            object : ImageCapture.OnImageCapturedCallback() {
                 override fun onError(exception: ImageCaptureException) {
                     Log.e(TAG, "Capture Failed: ${exception.message}", exception)
                 }
+
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val bitmap = imageProxyToBitmap(image)
+                    showToast("Capture Succeeded: $image")
+                    super.onCaptureSuccess(image)
+                }
             }
         )
+    }
+
+    /**
+     * CameraX API 인 takePicture() 결과로 생성된 ImageProxy 를 인자로 받아
+     * Bitmap 데이터를 생성해주는 메소드
+     * - 생성된 Bitmap 으로 TF Lite 모델에 입력을 하면 됨
+     */
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        val planeProxy = image.planes[0]
+        val buffer: ByteBuffer = planeProxy.buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     private fun startCamera() {
@@ -121,7 +128,9 @@ class MainActivity : AppCompatActivity() {
                     it.setSurfaceProvider(viewFinder.createSurfaceProvider())
                 }
 
-            imageCapture = ImageCapture.Builder().build()
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .build()
 
             // 후면 카메라 기본값으로 사용
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -263,7 +272,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "SmartCane"
+        private const val TAG = "SmartCane-MainActivity"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val REQUEST_CODE_PERMISSIONS = 10
     }

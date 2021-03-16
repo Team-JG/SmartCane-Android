@@ -22,6 +22,10 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    aaptOptions {
+        noCompress "tflite"
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -37,6 +41,8 @@ android {
     }
 }
 
+project.ext.ASSET_DIR = projectDir.toString() + '/src/main/assets'
+
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
@@ -47,6 +53,9 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
+    implementation 'org.tensorflow:tensorflow-lite:2.0.0'
+    implementation "com.google.android.gms:play-services-tasks:17.0.0"
 
     def camerax_version = "1.0.0-beta07"
     // CameraX core library using camera2 implementation
