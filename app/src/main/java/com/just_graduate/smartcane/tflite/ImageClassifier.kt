@@ -92,19 +92,21 @@ class ImageClassifier(private val context: Context) {
 
         Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
 
-        var result = ""
-
+        var text = "\n"
+        modelOutput.rewind()
+        val result = modelOutput.asFloatBuffer()
         for (i in 0 until 100){
-            result += modelOutput[i]
-            result += ' '
+            val prob = result.get(i)
+            Log.d(TAG, prob.toString())
+            text += prob
+            text += ' '
 
             if (i % 7 == 0){
-                result += "\n"
+                text += '\n'
             }
-            Log.d(TAG, modelOutput[i].toString())
         }
 
-        return result
+        return text
     }
 
     fun classifyAsync(bitmap: Bitmap): Task<String> {

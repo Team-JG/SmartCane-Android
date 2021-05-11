@@ -63,16 +63,22 @@ class MainActivity : AppCompatActivity() {
         initObserving()
         startCamera()
 
-        binding.cameraCaptureButton.setOnClickListener {
-            takePhoto()
-        }
-
+        /**
+         * Image Classifier 초기화
+         */
         imageClassifier.initialize().addOnFailureListener {
             Log.e(TAG, "Error to setting up classifier", it)
         }
+
+        /**
+         * 사진 촬영 후 Interpreter 실행
+         */
+        binding.cameraCaptureButton.setOnClickListener {
+            takePhoto()
+        }
     }
 
-    // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함)
+    // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함, 현재 1회 추론에 약 7초로 매우 느림)
     private fun takePhoto() {
         // 참조 변수 (계속하여 변경되는 이미지 캡쳐본 대응)
         val imageCapture = imageCapture ?: return
