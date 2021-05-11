@@ -11,7 +11,7 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
-import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
+import com.just_graduate.smartcane.util.Util.textToSpeech
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.launch
@@ -71,6 +71,7 @@ class Repository {
     /**
      * 지팡이 기기 스캔 동작
      */
+    @ExperimentalUnsignedTypes
     fun scanDevice() {
         progressState.postValue("지팡이 스캔 중")
         textToSpeech(MyApplication.applicationContext().getString(R.string.finding_cane))
@@ -108,7 +109,7 @@ class Repository {
                         intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
-                    name = device.name // broadcast 를 보낸 기기의 이름을 가져옴
+                    name = device.name // Broadcast 를 보낸 기기의 이름을 가져옴
                 }
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
@@ -176,7 +177,7 @@ class Repository {
     }
 
     /**
-     * 스캔한 지팡이 기기와 블루투스 연결 with Coroutine
+     * 스캔한 지팡이 기기와 블루투스 연결 (Coroutine 구현)
      */
     @ExperimentalUnsignedTypes
     private fun connectToTargetedDevice(targetedDevice: BluetoothDevice?) {

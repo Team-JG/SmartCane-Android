@@ -14,7 +14,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.util.Log
 import android.widget.Button
 import android.widget.Toast
@@ -27,15 +26,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.just_graduate.smartcane.tflite.ImageClassifier
 import com.just_graduate.smartcane.util.*
-import com.just_graduate.smartcane.util.Util.Companion.showToast
-import com.just_graduate.smartcane.util.Util.Companion.textToSpeech
+import com.just_graduate.smartcane.util.Util.showToast
+import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
 import java.lang.Exception
 import java.nio.ByteBuffer
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.ExecutorService
 
 
@@ -44,11 +41,10 @@ class MainActivity : AppCompatActivity() {
     var mBluetoothAdapter: BluetoothAdapter? = null
     var recv: String = ""
 
+    lateinit var binding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraCaptureButton: Button
     private lateinit var viewFinder: PreviewView
-
-    private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
 
     private var imageClassifier = ImageClassifier(this)
@@ -56,49 +52,59 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val binding: ActivityMainBinding =
-            DataBindingUtil.setContentView(this, R.layout.activity_main)
-
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.viewModel = viewModel
 
         if (!hasPermissions(this, PERMISSIONS)) {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
-        viewFinder = findViewById(R.id.viewFinder)
-        cameraCaptureButton = findViewById(R.id.camera_capture_button)
 
         // View Component 들이 ViewModel Observing 시작
         initObserving()
         startCamera()
 
-        cameraCaptureButton.setOnClickListener {
+        binding.cameraCaptureButton.setOnClickListener {
             takePhoto()
         }
 
-        outputDirectory = getOutputDirectory()
-
+        imageClassifier.initialize().addOnFailureListener {
+            Log.e(TAG, "Error to setting up classifier", it)
+        }
     }
 
+    // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함)
     private fun takePhoto() {
         // 참조 변수 (계속하여 변경되는 이미지 캡쳐본 대응)
         val imageCapture = imageCapture ?: return
 
         // 사진이 찍히고 난 뒤 실행되는 Listener 동작 정의
-        // CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
-        // Bitmap 형식의 이미지를 핸들링할 수 있도록 함
+        // -CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
+        //  Bitmap 형식의 이미지를 핸들링할 수 있도록 함
         imageCapture.takePicture(
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onError(exception: ImageCaptureException) {
-                    Log.e(TAG, "Capture Failed: ${exception.message}", exception)
-                }
+                ContextCompat.getMainExecutor(this),
 
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = imageProxyToBitmap(image)
-                    showToast("Capture Succeeded: $image")
-                    super.onCaptureSuccess(image)
+                object : ImageCapture.OnImageCapturedCallback() {
+
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.e(TAG, "Capture Failed: ${exception.message}", exception)
+                    }
+
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        val bitmap = imageProxyToBitmap(image)
+                        showToast("Capture Succeeded: $image")
+
+                        // TF Lite 모델에 이미지 입력
+                        imageClassifier.classifyAsync(bitmap)
+                                .addOnSuccessListener { resultText ->
+                                    Log.d(TAG, "SUCCESS!")
+                                    Log.d(TAG, resultText)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e(TAG, "ERROR")
+                                }
+                        super.onCaptureSuccess(image)
+                    }
                 }
-            }
         )
     }
 
@@ -107,12 +113,27 @@ class MainActivity : AppCompatActivity() {
      * Bitmap 데이터를 생성해주는 메소드
      * - 생성된 Bitmap 으로 TF Lite 모델에 입력을 하면 됨
      */
+
     private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
         val planeProxy = image.planes[0]
         val buffer: ByteBuffer = planeProxy.buffer
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    private fun classifyImage(bitmap: Bitmap?) {
+        if ((bitmap != null) && (imageClassifier.isInitialized)) {
+            imageClassifier
+                    .classifyAsync(bitmap)
+                    .addOnSuccessListener {
+                        // TODO
+                        Log.d(TAG, it)
+                    }
+                    .addOnFailureListener {
+                        Log.e(TAG, "Error Classifying Drawing", it)
+                    }
+        }
     }
 
     private fun startCamera() {
@@ -123,14 +144,14 @@ class MainActivity : AppCompatActivity() {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             // 카메라 프리뷰 (XML 에서 만들었던 PreviewView 사용)
             val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(viewFinder.createSurfaceProvider())
-                }
+                    .build()
+                    .also {
+                        it.setSurfaceProvider(binding.viewFinder.createSurfaceProvider())
+                    }
 
             imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                .build()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
 
             // 후면 카메라 기본값으로 사용
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -141,14 +162,13 @@ class MainActivity : AppCompatActivity() {
 
                 // CameraProvider bind() -> CameraSelector, Preview 객체 넘김
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
+                        this, cameraSelector, preview, imageCapture
                 )
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
         }, ContextCompat.getMainExecutor(this))
-
     }
 
     private fun getOutputDirectory(): File {
@@ -160,12 +180,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val startForResult =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val intent = result.data
-                viewModel.onClickConnect()
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val intent = result.data
+                    viewModel.onClickConnect()
+                }
             }
-        }
 
     private fun initObserving() {
         // Progress
@@ -188,18 +208,18 @@ class MainActivity : AppCompatActivity() {
             startForResult.launch(enableBtIntent)
         })
 
-        // Bluetooth Connect/Disconnect Event
+        // Bluetooth 연결/해제 이벤트
         viewModel.connected.observe(this, {
             if (it != null) {
                 if (it) {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(true)
-                    Util.showToast(getString(R.string.success_connect_cane))
+                    showToast(getString(R.string.success_connect_cane))
                     textToSpeech(getString(R.string.success_connect_cane))
                 } else {
                     viewModel.setInProgress(false)
                     viewModel.btnConnected.set(false)
-                    Util.showToast(getString(R.string.disconnect_connect_cane))
+                    showToast(getString(R.string.disconnect_connect_cane))
                     textToSpeech(getString(R.string.disconnect_connect_cane))
                 }
             }
@@ -223,7 +243,7 @@ class MainActivity : AppCompatActivity() {
     private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
         for (permission in permissions) {
             if (context?.let { ActivityCompat.checkSelfPermission(it, permission) }
-                != PackageManager.PERMISSION_GRANTED
+                    != PackageManager.PERMISSION_GRANTED
             ) {
                 return false
             }
@@ -233,9 +253,9 @@ class MainActivity : AppCompatActivity() {
 
     // Permission check
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String?>,
-        grantResults: IntArray
+            requestCode: Int,
+            permissions: Array<String?>,
+            grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {

@@ -65,7 +65,6 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
      */
     fun unregisterReceiver() {
         repository.unregisterReceiver()
-
     }
 
     /**
