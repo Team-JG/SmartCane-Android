@@ -55,6 +55,7 @@ dependencies {
 
     implementation 'org.tensorflow:tensorflow-lite:2.3.0'
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.3.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.0.0-nightly-SNAPSHOT'
     implementation "com.google.android.gms:play-services-tasks:17.0.0"
 
     def camerax_version = "1.0.0-beta07"

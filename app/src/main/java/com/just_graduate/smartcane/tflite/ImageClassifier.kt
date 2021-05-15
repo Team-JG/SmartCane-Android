@@ -3,17 +3,22 @@ package com.just_graduate.smartcane.tflite
 import android.content.Context
 import android.content.res.AssetManager
 import android.graphics.Bitmap
-import android.provider.ContactsContract
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
+import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.support.common.FileUtil
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.io.FileInputStream
 import java.io.IOException
 import java.lang.IllegalStateException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.IntBuffer
+import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -45,11 +50,13 @@ class ImageClassifier(private val context: Context) {
 
     private fun initializeInterpreter() {
         val assetManager = context.assets
-        val model = loadModelFile(assetManager)
+//        val model = loadModelFile(assetManager)
+        val model: MappedByteBuffer = FileUtil.loadMappedFile(context, MODEL_FILE)
+        val interpreter: Interpreter = Interpreter(model)
 
 //        val options = Interpreter.Options()
 //        options.setUseNNAPI(true)
-        val interpreter = Interpreter(model)
+//        val interpreter = Interpreter(model)
 
         val inputShape = interpreter.getInputTensor(0).shape()
         inputImageWidth = inputShape[1]
@@ -87,23 +94,22 @@ class ImageClassifier(private val context: Context) {
 //        val result = Array(1) { FloatArray(OUTPUT_CLASSES_COUNT) }
         val bufferSize = 3655680 * java.lang.Float.SIZE / java.lang.Byte.SIZE
         val modelOutput = ByteBuffer.allocateDirect(bufferSize).order(ByteOrder.nativeOrder())
-        interpreter?.run(byteBuffer, modelOutput)
+
+        val probBuffer = TensorBuffer.createFixedSize(intArrayOf(1, 3655680), DataType.UINT8)
+        interpreter?.run(byteBuffer.buffer, probBuffer.buffer)
         elapsedTime = (System.nanoTime() - startTime) / 1000000
 
         Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
 
-        var text = "\n"
-        modelOutput.rewind()
-        val result = modelOutput.asFloatBuffer()
-        for (i in 0 until 100){
-            val prob = result.get(i)
-            Log.d(TAG, prob.toString())
-            text += prob
-            text += ' '
+        var text = "OUTPUT TENSOR\n\n"
 
-            if (i % 7 == 0){
-                text += '\n'
-            }
+        modelOutput.rewind()
+        val result = probBuffer.floatArray
+
+        for (i in 0 until 1000) {
+            Log.d(TAG, result[i].toString())
+            text += result[i]
+            text += ' '
         }
 
         return text
@@ -125,57 +131,20 @@ class ImageClassifier(private val context: Context) {
         }
     }
 
-    private fun convertBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val byteBuffer = ByteBuffer
-                .allocateDirect(modelInputSize * 3)
-                .order(ByteOrder.nativeOrder())
-//
-//        Log.d("ModelInputSize", modelInputSize.toString())
-//        Log.d("ModelInputSize", (modelInputSize / 4).toString())
+    private fun convertBitmapToByteBuffer(bitmap: Bitmap): TensorImage {
+        val imageProcessor = ImageProcessor.Builder()
+                .add(ResizeOp(inputImageHeight, inputImageWidth, ResizeOp.ResizeMethod.BILINEAR))
+                .build()
 
-        val pixels = IntArray(inputImageWidth * inputImageHeight * 3)
+        var tImage = TensorImage(DataType.FLOAT32)
+        tImage.load(bitmap)
+        tImage = imageProcessor.process(tImage)
+
+        val pixels = IntArray(inputImageWidth * inputImageHeight)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
 
-        var pixel = 0
-
-        // RGB 각각에 대해서 레이어 쌓아줌
-        for (rgb in 0 until 3){
-            for (i in 0 until inputImageWidth){
-                for (j in 0 until inputImageHeight){
-                    val pixelValue = pixels[pixel++]
-                    // pixel 각각 인덱스
-                    Log.d(TAG, pixel.toString())
-                    val r = (((pixelValue shr 16 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
-                    val g = (((pixelValue shr 8 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
-                    val b = (((pixelValue and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
-
-//                    byteBuffer.putFloat(r)
-//                    byteBuffer.putFloat(g)
-//                    byteBuffer.putFloat(b)
-
-//                     Convert RGB to Grayscale and normalize pixel value to [0..1]
-                    val normalizedPixelValue = (r + g + b) / 3.0f / 255.0f
-                    byteBuffer.putFloat(normalizedPixelValue)
-                }
-            }
-        }
-
-//        for (pixelValue in pixels) {
-//            val r = (pixelValue shr 16 and 0xFF)
-//            val g = (pixelValue shr 8 and 0xFF)
-//            val b = (pixelValue and 0xFF)
-//
-//            // Convert RGB to Grayscale and normalize pixel value to [0..1]
-//            val normalizedPixelValue = (r + g + b) / 3.0f / 255.0f
-//            byteBuffer.putFloat(normalizedPixelValue)
-//        }
-
-        Log.d(TAG, inputImageWidth.toString())
-        Log.d(TAG, inputImageHeight.toString())
-        Log.d(TAG, byteBuffer.toString())
-
         bitmap.recycle()
-        return byteBuffer
+        return tImage
     }
 
     private fun getOutputString(output: FloatArray): String {

@@ -15,6 +15,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import android.view.Surface
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
@@ -29,6 +30,7 @@ import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.showToast
 import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
+import org.koin.android.ext.android.bind
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
 import java.lang.Exception
@@ -99,6 +101,8 @@ class MainActivity : AppCompatActivity() {
                         val bitmap = imageProxyToBitmap(image)
                         showToast("Capture Succeeded: $image")
 
+                        binding.captureResult.setImageBitmap(bitmap)
+
                         // TF Lite 모델에 이미지 입력
                         imageClassifier.classifyAsync(bitmap)
                                 .addOnSuccessListener { resultText ->
@@ -157,6 +161,7 @@ class MainActivity : AppCompatActivity() {
 
             imageCapture = ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setTargetRotation(Surface.ROTATION_180)
                     .build()
 
             // 후면 카메라 기본값으로 사용
