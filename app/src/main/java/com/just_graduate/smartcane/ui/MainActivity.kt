@@ -14,6 +14,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
 import android.widget.Button
@@ -30,6 +31,8 @@ import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.showToast
 import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
+import com.theartofdev.edmodo.cropper.CropImage
+import com.theartofdev.edmodo.cropper.CropImageView
 import org.koin.android.ext.android.bind
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
@@ -78,6 +81,10 @@ class MainActivity : AppCompatActivity() {
         binding.cameraCaptureButton.setOnClickListener {
             takePhoto()
         }
+
+        binding.loadImageButton.setOnClickListener {
+            loadImage()
+        }
     }
 
     // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함, 현재 1회 추론에 약 7초로 매우 느림)
@@ -116,6 +123,43 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
         )
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        // 업로드를 위한 사진이 선택 및 편집되면 Uri 형태로 결과가 반환됨
+        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            val result = CropImage.getActivityResult(data)
+
+            if (resultCode == Activity.RESULT_OK) {
+                val resultUri = result.uri
+                val bitmap =
+                        MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
+
+                binding.captureResult.setImageBitmap(bitmap)
+                imageClassifier.classifyAsync(bitmap)
+                        .addOnSuccessListener { resultText ->
+                            Log.d(TAG, "SUCCESS!")
+                            Log.d(TAG, resultText)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "ERROR")
+                        }
+            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
+                Log.e("Error Image Selecting", "이미지 선택 및 편집 오류")
+            }
+        }
+    }
+
+    private fun loadImage(){
+        CropImage.activity()
+                .setGuidelines(CropImageView.Guidelines.ON)
+                .setActivityTitle("이미지 추가")
+                .setCropShape(CropImageView.CropShape.RECTANGLE)
+                .setCropMenuCropButtonTitle("완료")
+                .setRequestedSize(272, 480)
+                .start(this)
     }
 
     /**

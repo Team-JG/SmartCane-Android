@@ -38,6 +38,14 @@
                 android:text="TAKE PHOTO"
                 android:layout_height="60dp"/>
 
+            <Button
+                android:layout_gravity="center"
+                android:id="@+id/loadImageButton"
+                android:layout_width="100dp"
+                android:text="LOAD IMAGE"
+                android:layout_height="60dp"/>
+
+
             <ImageView
                 android:id="@+id/captureResult"
                 android:layout_width="match_parent"
