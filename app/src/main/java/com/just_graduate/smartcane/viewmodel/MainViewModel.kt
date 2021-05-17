@@ -1,14 +1,18 @@
 package com.just_graduate.smartcane.viewmodel
 
+import android.graphics.Bitmap
+import android.util.Log
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
 import androidx.lifecycle.*
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.Repository
+import com.just_graduate.smartcane.data.SegmentationResult
 import com.just_graduate.smartcane.util.*
+import okhttp3.MultipartBody
 import java.nio.charset.Charset
 
-class MainViewModel(private val repository: Repository) : ViewModel() {
+class MainViewModel(private val repository: Repository) : BaseViewModel() {
     val connected: LiveData<Boolean?>
         get() = repository.connected
     val progressState: LiveData<String>
@@ -31,6 +35,11 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
     val txtRead: ObservableField<String> = ObservableField("")
     val putTxt: LiveData<String>
         get() = repository.putTxt
+
+    // 딥 러닝 API 호출 결과 받을 시 변화하는 LiveData
+    val _segmentationResult = MutableLiveData<SegmentationResult>()
+    val segmentationResult: LiveData<SegmentationResult>
+        get() = _segmentationResult
 
     fun setInProgress(en: Boolean) {
         repository.inProgress.value = Event(en)
@@ -74,6 +83,26 @@ class MainViewModel(private val repository: Repository) : ViewModel() {
         val commandString = command.toString()
         val byteArr = commandString.toByteArray(Charset.defaultCharset())
         repository.sendByteData(byteArr)
+    }
+
+    /**
+     * 찍힌 이미지에 대하여 Segmentation Result 요청
+     */
+    fun getSegmentationResult(image: MultipartBody.Part) {
+        // Bitmap -> MultipartBody.Part
+        addDisposable(
+            repository.getSegmentationResult(image = image)
+                .applySchedulers()
+                .subscribe(
+                    {
+                        _segmentationResult.value = it
+                        Log.d("TEST", it.result)
+                    },
+                    {
+                        Log.e("TEST ERROR", it.message.toString())
+                    }
+                )
+        )
     }
 
 }

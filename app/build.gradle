@@ -83,12 +83,26 @@ dependencies {
 
     // for new API replaced startActivityForResult
     implementation 'androidx.fragment:fragment-ktx:1.3.0-beta02'
-
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.5"
 
     implementation "org.jetbrains.kotlinx:multik-api:0.0.1"
     implementation "org.jetbrains.kotlinx:multik-default:0.0.1"
 
     implementation 'com.theartofdev.edmodo:android-image-cropper:2.8.+'
+
+    // retrofit
+    implementation 'com.squareup.retrofit2:adapter-rxjava3:2.9.0'
+    implementation("com.squareup.okhttp3:logging-interceptor:4.8.1")
+
+    // retrofit
+    implementation "com.squareup.retrofit2:retrofit:2.9.0"
+    implementation "com.squareup.retrofit2:converter-gson:2.8.1"
+    implementation("com.squareup.okhttp3:logging-interceptor:4.8.1")
+
+    implementation 'com.squareup.retrofit2:adapter-rxjava3:2.9.0'
+    implementation "io.reactivex.rxjava3:rxjava:3.0.6"
+    implementation "io.reactivex.rxjava3:rxkotlin:3.0.0"
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+
 
 }

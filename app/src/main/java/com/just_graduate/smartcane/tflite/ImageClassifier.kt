@@ -146,6 +146,7 @@ class ImageClassifier(private val context: Context) {
                 .add(ResizeOp(inputImageHeight, inputImageWidth, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
                 .add(NormalizeOp(127.5F, 127.5F))
                 .build()
+
         var tImage = TensorImage(DataType.FLOAT32)
 
         tImage.load(bitmap)
@@ -189,8 +190,11 @@ class ImageClassifier(private val context: Context) {
         Log.d("getOutputMax", sliced.maxByOrNull { it }.toString())
 
         val tensor = mk.ndarray(output, 272, 480, 7, 4)
-        val result = mk.math.maxD4(tensor, axis = 1)  // Invoke Error (loadLibrary 쪽에서 오류 나는 것 같음)
+
+//        val result = mk.math.maxD4(tensor, axis = 1)  // Invoke Error (loadLibrary 쪽에서 오류 나는 것 같음)
+
 //        Log.d("Tensor", result[0].toString())
+
     }
 
     companion object {

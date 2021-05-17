@@ -7,20 +7,25 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
+import com.just_graduate.smartcane.network.NetworkHelper
+import com.just_graduate.smartcane.network.NetworkHelper.retrofitService
+import com.just_graduate.smartcane.network.RetrofitService
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.util.Util.textToSpeech
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-class Repository {
+class Repository: RetrofitService {
     var connected: MutableLiveData<Boolean?> = MutableLiveData(null)
     var progressState: MutableLiveData<String> = MutableLiveData("")
 
@@ -39,6 +44,11 @@ class Repository {
     var mInputStream: InputStream? = null
 
     var foundDevice: Boolean = false
+
+    /**
+     * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
+     */
+    override fun getSegmentationResult(image: MultipartBody.Part) = retrofitService.getSegmentationResult(image = image)
 
     /**
      * 블루투스 지원 여부
@@ -291,7 +301,6 @@ class Repository {
                         if (bytesAvailable > 0) { //데이터가 수신된 경우
                             val packetBytes = ByteArray(bytesAvailable)
                             mInputStream?.read(packetBytes)
-
                             /**
                              * 한 버퍼 처리
                              */
@@ -317,4 +326,6 @@ class Repository {
         //데이터 수신 thread 시작
         mWorkerThread.start()
     }
+
+
 }

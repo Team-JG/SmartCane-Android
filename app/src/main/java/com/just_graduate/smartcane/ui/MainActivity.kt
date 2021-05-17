@@ -33,9 +33,14 @@ import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import org.koin.android.ext.android.bind
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import java.io.File
+import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
@@ -43,13 +48,11 @@ import java.util.concurrent.ExecutorService
 
 class MainActivity : AppCompatActivity() {
     private val viewModel by viewModel<MainViewModel>()
-    var mBluetoothAdapter: BluetoothAdapter? = null
     var recv: String = ""
 
     lateinit var binding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
-    private lateinit var cameraCaptureButton: Button
-    private lateinit var viewFinder: PreviewView
+
     private lateinit var cameraExecutor: ExecutorService
 
     private var imageClassifier = ImageClassifier(this)
@@ -96,33 +99,76 @@ class MainActivity : AppCompatActivity() {
         // -CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
         //  Bitmap 형식의 이미지를 핸들링할 수 있도록 함
         imageCapture.takePicture(
-                ContextCompat.getMainExecutor(this),
+            ContextCompat.getMainExecutor(this),
 
-                object : ImageCapture.OnImageCapturedCallback() {
+            object : ImageCapture.OnImageCapturedCallback() {
 
-                    override fun onError(exception: ImageCaptureException) {
-                        Log.e(TAG, "Capture Failed: ${exception.message}", exception)
-                    }
-
-                    override fun onCaptureSuccess(image: ImageProxy) {
-                        val bitmap = imageProxyToBitmap(image)
-                        showToast("Capture Succeeded: $image")
-
-                        binding.captureResult.setImageBitmap(bitmap)
-
-                        // TF Lite 모델에 이미지 입력
-                        imageClassifier.classifyAsync(bitmap)
-                                .addOnSuccessListener { resultText ->
-                                    Log.d(TAG, "SUCCESS!")
-                                    Log.d(TAG, resultText)
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e(TAG, "ERROR")
-                                }
-                        super.onCaptureSuccess(image)
-                    }
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e(TAG, "Capture Failed: ${exception.message}", exception)
                 }
+
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val bitmap = imageProxyToBitmap(image)
+
+                    showToast("Capture Succeeded: $image")
+
+                    binding.captureResult.setImageBitmap(bitmap)
+                    val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+
+                    viewModel.getSegmentationResult(body)
+                    viewModel.segmentationResult.observe(
+                        this@MainActivity,
+                        {
+                            Log.d(TAG, it.result)
+
+                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
+                        }
+                    )
+
+                    // TF Lite 모델에 이미지 입력
+//                        imageClassifier.classifyAsync(bitmap)
+//                                .addOnSuccessListener { resultText ->
+//                                    Log.d(TAG, "SUCCESS!")
+//                                    Log.d(TAG, resultText)
+//                                }
+//                                .addOnFailureListener { e ->
+//                                    Log.e(TAG, "ERROR")
+//                                }
+//                        super.onCaptureSuccess(image)
+                }
+            }
         )
+    }
+
+    private fun buildImageBodyPart(bitmap: Bitmap): MultipartBody.Part {
+        val leftImageFile = convertBitmapToFile(bitmap)
+        val reqFile = leftImageFile.asRequestBody("image/*".toMediaTypeOrNull())
+        return MultipartBody.Part.createFormData("ROAD_IMAGE", leftImageFile.name, reqFile)
+    }
+
+    private fun convertBitmapToFile(bitmap: Bitmap): File {
+        //create a file to write bitmap data
+        val file = File(this.cacheDir, "ROAD_IMAGE")
+        file.createNewFile()
+
+        val bos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 0 /*ignored for PNG*/, bos)
+        val bitMapData = bos.toByteArray()
+
+        var fos: FileOutputStream? = null
+        try {
+            fos = FileOutputStream(file)
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+        }
+        try {
+            fos?.write(bitMapData)
+            fos?.flush()
+            fos?.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return file
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -135,31 +181,31 @@ class MainActivity : AppCompatActivity() {
             if (resultCode == Activity.RESULT_OK) {
                 val resultUri = result.uri
                 val bitmap =
-                        MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
+                    MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
 
                 binding.captureResult.setImageBitmap(bitmap)
                 imageClassifier.classifyAsync(bitmap)
-                        .addOnSuccessListener { resultText ->
-                            Log.d(TAG, "SUCCESS!")
-                            Log.d(TAG, resultText)
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e(TAG, "ERROR")
-                        }
+                    .addOnSuccessListener { resultText ->
+                        Log.d(TAG, "SUCCESS!")
+                        Log.d(TAG, resultText)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "ERROR")
+                    }
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Log.e("Error Image Selecting", "이미지 선택 및 편집 오류")
             }
         }
     }
 
-    private fun loadImage(){
+    private fun loadImage() {
         CropImage.activity()
-                .setGuidelines(CropImageView.Guidelines.ON)
-                .setActivityTitle("이미지 추가")
-                .setCropShape(CropImageView.CropShape.RECTANGLE)
-                .setCropMenuCropButtonTitle("완료")
-                .setRequestedSize(272, 480)
-                .start(this)
+            .setGuidelines(CropImageView.Guidelines.ON)
+            .setActivityTitle("이미지 추가")
+            .setCropShape(CropImageView.CropShape.RECTANGLE)
+            .setCropMenuCropButtonTitle("완료")
+            .setRequestedSize(272, 480)
+            .start(this)
     }
 
     /**
@@ -179,14 +225,14 @@ class MainActivity : AppCompatActivity() {
     private fun classifyImage(bitmap: Bitmap?) {
         if ((bitmap != null) && (imageClassifier.isInitialized)) {
             imageClassifier
-                    .classifyAsync(bitmap)
-                    .addOnSuccessListener {
-                        // TODO
-                        Log.d(TAG, it)
-                    }
-                    .addOnFailureListener {
-                        Log.e(TAG, "Error Classifying Drawing", it)
-                    }
+                .classifyAsync(bitmap)
+                .addOnSuccessListener {
+                    // TODO
+                    Log.d(TAG, it)
+                }
+                .addOnFailureListener {
+                    Log.e(TAG, "Error Classifying Drawing", it)
+                }
         }
     }
 
@@ -198,15 +244,15 @@ class MainActivity : AppCompatActivity() {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             // 카메라 프리뷰 (XML 에서 만들었던 PreviewView 사용)
             val preview = Preview.Builder()
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(binding.viewFinder.createSurfaceProvider())
-                    }
+                .build()
+                .also {
+                    it.setSurfaceProvider(binding.viewFinder.createSurfaceProvider())
+                }
 
             imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .setTargetRotation(Surface.ROTATION_180)
-                    .build()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .setTargetRotation(Surface.ROTATION_180)
+                .build()
 
             // 후면 카메라 기본값으로 사용
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -217,7 +263,7 @@ class MainActivity : AppCompatActivity() {
 
                 // CameraProvider bind() -> CameraSelector, Preview 객체 넘김
                 cameraProvider.bindToLifecycle(
-                        this, cameraSelector, preview, imageCapture
+                    this, cameraSelector, preview, imageCapture
                 )
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
@@ -235,12 +281,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val startForResult =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    val intent = result.data
-                    viewModel.onClickConnect()
-                }
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val intent = result.data
+                viewModel.onClickConnect()
             }
+        }
 
     private fun initObserving() {
         // Progress
@@ -298,7 +344,7 @@ class MainActivity : AppCompatActivity() {
     private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
         for (permission in permissions) {
             if (context?.let { ActivityCompat.checkSelfPermission(it, permission) }
-                    != PackageManager.PERMISSION_GRANTED
+                != PackageManager.PERMISSION_GRANTED
             ) {
                 return false
             }
@@ -308,9 +354,9 @@ class MainActivity : AppCompatActivity() {
 
     // Permission check
     override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<String?>,
-            grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<String?>,
+        grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
