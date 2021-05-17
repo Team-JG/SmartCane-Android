@@ -9,14 +9,14 @@ import org.koin.android.ext.koin.androidFileProperties
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 
-class MyApplication : Application() {
+class BaseApplication : Application() {
 
     init{
         instance = this
     }
 
     companion object {
-        lateinit var instance: MyApplication
+        lateinit var instance: BaseApplication
         fun applicationContext() : Context {
             return instance.applicationContext
         }
@@ -30,7 +30,7 @@ class MyApplication : Application() {
             // 에러확인 - androidLogger(Level.ERROR)
             androidLogger()
             // Android Context를 넘겨준다.
-            androidContext(this@MyApplication)
+            androidContext(this@BaseApplication)
             // assets/koin.properties 파일에서 프로퍼티를 가져옴
             androidFileProperties()
             //module list

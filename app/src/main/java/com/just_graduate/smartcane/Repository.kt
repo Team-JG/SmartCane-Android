@@ -7,10 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import com.just_graduate.smartcane.network.NetworkHelper
 import com.just_graduate.smartcane.network.NetworkHelper.retrofitService
 import com.just_graduate.smartcane.network.RetrofitService
 import com.just_graduate.smartcane.util.Event
@@ -55,8 +53,8 @@ class Repository: RetrofitService {
      */
     fun isBluetoothSupport(): Boolean {
         return if (mBluetoothAdapter == null) {
-            Util.showToast(MyApplication.applicationContext().getString(R.string.bt_disable))
-            textToSpeech(MyApplication.applicationContext().getString(R.string.bt_disable))
+            Util.showToast(BaseApplication.applicationContext().getString(R.string.bt_disable))
+            textToSpeech(BaseApplication.applicationContext().getString(R.string.bt_disable))
             false
         } else {
             true
@@ -70,8 +68,8 @@ class Repository: RetrofitService {
         return if (!mBluetoothAdapter!!.isEnabled) {
             // 블루투스를 지원하지만 비활성 상태인 경우
             // 블루투스를 활성 상태로 바꾸기 위해 사용자 동의 요청
-            Util.showToast(MyApplication.applicationContext().getString(R.string.plz_able_bt))
-            textToSpeech(MyApplication.applicationContext().getString(R.string.plz_able_bt))
+            Util.showToast(BaseApplication.applicationContext().getString(R.string.plz_able_bt))
+            textToSpeech(BaseApplication.applicationContext().getString(R.string.plz_able_bt))
             false
         } else {
             true
@@ -84,7 +82,7 @@ class Repository: RetrofitService {
     @ExperimentalUnsignedTypes
     fun scanDevice() {
         progressState.postValue("지팡이 스캔 중")
-        textToSpeech(MyApplication.applicationContext().getString(R.string.finding_cane))
+        textToSpeech(BaseApplication.applicationContext().getString(R.string.finding_cane))
 
         registerBluetoothReceiver()  // BroadcastReceiver 인스턴스 생성
 
@@ -180,7 +178,7 @@ class Repository: RetrofitService {
                 }
             }
         }
-        MyApplication.applicationContext().registerReceiver(
+        BaseApplication.applicationContext().registerReceiver(
                 mBluetoothStateReceiver,
                 stateFilter
         )
@@ -238,7 +236,7 @@ class Repository: RetrofitService {
      */
     fun unregisterReceiver() {
         if (mBluetoothStateReceiver != null) {
-            MyApplication.applicationContext().unregisterReceiver(mBluetoothStateReceiver)
+            BaseApplication.applicationContext().unregisterReceiver(mBluetoothStateReceiver)
             mBluetoothStateReceiver = null
         }
     }

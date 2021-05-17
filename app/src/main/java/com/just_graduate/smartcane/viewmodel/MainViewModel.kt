@@ -1,6 +1,5 @@
 package com.just_graduate.smartcane.viewmodel
 
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
@@ -87,9 +86,10 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
 
     /**
      * 찍힌 이미지에 대하여 Segmentation Result 요청
+     * - Django 서버 API 통해서 결과 얻음
+     * - Django 서버에 pspunet 기반의 인도 보행 이미지 분석 모델 탑재
      */
     fun getSegmentationResult(image: MultipartBody.Part) {
-        // Bitmap -> MultipartBody.Part
         addDisposable(
             repository.getSegmentationResult(image = image)
                 .applySchedulers()

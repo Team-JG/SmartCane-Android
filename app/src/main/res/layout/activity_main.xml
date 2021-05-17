@@ -15,35 +15,59 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content">
+
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:layout_marginTop="50dp"
-            android:orientation="vertical"
-            android:padding="24dp">
-
+            android:orientation="vertical">
 
             <androidx.camera.view.PreviewView
                 android:id="@+id/viewFinder"
                 android:layout_width="match_parent"
                 android:layout_height="300dp"/>
 
-            <Button
-                android:layout_gravity="center"
-                android:id="@+id/camera_capture_button"
-                android:layout_width="100dp"
-                android:text="TAKE PHOTO"
-                android:layout_height="60dp"/>
 
-            <Button
-                android:layout_gravity="center"
-                android:id="@+id/loadImageButton"
-                android:layout_width="100dp"
-                android:text="LOAD IMAGE"
-                android:layout_height="60dp"/>
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_connect"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="10dp"
+                android:background="#787878"
+                android:onClick="@{()->viewModel.onClickConnect()}"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="@{viewModel.btnConnected?@string/disconnect:@string/connect}"
+                android:textColor="@color/white"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:gravity="center"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" >
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:layout_gravity="center"
+                    android:id="@+id/camera_capture_button"
+                    android:layout_width="100dp"
+                    android:text="TAKE PHOTO"
+                    android:layout_marginEnd="8dp"
+                    android:layout_height="60dp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:layout_gravity="center"
+                    android:id="@+id/loadImageButton"
+                    android:layout_width="100dp"
+                    android:text="LOAD IMAGE"
+                    android:layout_height="60dp"/>
+
+            </LinearLayout>
 
 
             <ImageView
@@ -56,7 +80,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -70,7 +94,7 @@
                     android:textStyle="bold" />
 
 
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send5"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -90,7 +114,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -103,8 +127,7 @@
                     android:textColor="@color/white"
                     android:textStyle="bold" />
 
-
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -118,7 +141,7 @@
                     android:textStyle="bold" />
 
 
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send4"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -177,22 +200,6 @@
                 android:textColor="@color/white" />
 
         </LinearLayout>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btn_connect"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginStart="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:background="#787878"
-            android:onClick="@{()->viewModel.onClickConnect()}"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:text="@{viewModel.btnConnected?@string/disconnect:@string/connect}"
-            android:textColor="@color/white"
-            android:textStyle="bold" />
     </FrameLayout>
     </ScrollView>
 </layout>

@@ -54,11 +54,14 @@ class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
 
     private lateinit var cameraExecutor: ExecutorService
-
     private var imageClassifier = ImageClassifier(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // View Component 들이 ViewModel Observing 시작
+        initObserving()
+        startCamera()
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.viewModel = viewModel
@@ -67,12 +70,9 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
 
-        // View Component 들이 ViewModel Observing 시작
-        initObserving()
-        startCamera()
-
         /**
          * Image Classifier 초기화
+         * TODO : 딥 러닝 API 호출 시 Image Classifier 제거
          */
         imageClassifier.initialize().addOnFailureListener {
             Log.e(TAG, "Error to setting up classifier", it)
@@ -80,11 +80,16 @@ class MainActivity : AppCompatActivity() {
 
         /**
          * 사진 촬영 후 Interpreter 실행
+         * TODO : 딥 러닝 API 호출로 동작 변경
          */
         binding.cameraCaptureButton.setOnClickListener {
             takePhoto()
         }
 
+        /**
+         * 임의 이미지 입력 후 Interpreter 실행
+         * TODO : 딥 러닝 API 호출로 동작 변경
+         */
         binding.loadImageButton.setOnClickListener {
             loadImage()
         }
@@ -96,16 +101,21 @@ class MainActivity : AppCompatActivity() {
         val imageCapture = imageCapture ?: return
 
         // 사진이 찍히고 난 뒤 실행되는 Listener 동작 정의
-        // -CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
-        //  Bitmap 형식의 이미지를 핸들링할 수 있도록 함
+        // - CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
+        // - Bitmap 형식의 이미지를 핸들링할 수 있도록 함
         imageCapture.takePicture(
             ContextCompat.getMainExecutor(this),
-
             object : ImageCapture.OnImageCapturedCallback() {
-
                 override fun onError(exception: ImageCaptureException) {
                     Log.e(TAG, "Capture Failed: ${exception.message}", exception)
                 }
+
+                /**
+                 * 촬영한 이미지를 통해 딥 러닝 서버 API 를 호출하여, 결과를 핸들링함
+                 * - ImageProxy => Bitmap => File => MultipartBody.Part => API 호출 동작 수행
+                 * - API 호출이 완료되면, segmentationResult 라는 LiveData 에 API 호출 결과 담김
+                 * - TODO : 호출 결과를 통해 TTS 안내 등 동작 정의 필요
+                 */
 
                 override fun onCaptureSuccess(image: ImageProxy) {
                     val bitmap = imageProxyToBitmap(image)
@@ -124,8 +134,12 @@ class MainActivity : AppCompatActivity() {
                             // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
                         }
                     )
+                }
+            }
+        )
+    }
 
-                    // TF Lite 모델에 이미지 입력
+    // TF Lite 모델에 이미지 입력
 //                        imageClassifier.classifyAsync(bitmap)
 //                                .addOnSuccessListener { resultText ->
 //                                    Log.d(TAG, "SUCCESS!")
@@ -135,17 +149,23 @@ class MainActivity : AppCompatActivity() {
 //                                    Log.e(TAG, "ERROR")
 //                                }
 //                        super.onCaptureSuccess(image)
-                }
-            }
-        )
-    }
 
+
+    /**
+     * Retrofit 을 통해 이미지 POST API 구현을 하기 위해서는,
+     * MultipartBody.Part 형태로 데이터를 넣어야 한다.
+     * - Bimap => File => MultipartBody.Part 변환 동작 수행
+     */
     private fun buildImageBodyPart(bitmap: Bitmap): MultipartBody.Part {
         val leftImageFile = convertBitmapToFile(bitmap)
         val reqFile = leftImageFile.asRequestBody("image/*".toMediaTypeOrNull())
         return MultipartBody.Part.createFormData("ROAD_IMAGE", leftImageFile.name, reqFile)
     }
 
+    /**
+     * MultipartBody.Part 를 만들기 위해서는 File 객체가 있어야함
+     * - Bitmap => File 변환 동작 수행
+     */
     private fun convertBitmapToFile(bitmap: Bitmap): File {
         //create a file to write bitmap data
         val file = File(this.cacheDir, "ROAD_IMAGE")
@@ -222,20 +242,6 @@ class MainActivity : AppCompatActivity() {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
-    private fun classifyImage(bitmap: Bitmap?) {
-        if ((bitmap != null) && (imageClassifier.isInitialized)) {
-            imageClassifier
-                .classifyAsync(bitmap)
-                .addOnSuccessListener {
-                    // TODO
-                    Log.d(TAG, it)
-                }
-                .addOnFailureListener {
-                    Log.e(TAG, "Error Classifying Drawing", it)
-                }
-        }
-    }
-
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         // 인자로 Runnable 객체, getMainExecutor (Main thread 에서 동작하는 Executor 리턴함) 넘김
@@ -270,14 +276,6 @@ class MainActivity : AppCompatActivity() {
             }
 
         }, ContextCompat.getMainExecutor(this))
-    }
-
-    private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-            File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
-        }
-        return if (mediaDir != null && mediaDir.exists())
-            mediaDir else filesDir
     }
 
     private val startForResult =
@@ -341,6 +339,9 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /**
+     * Permissions Array 에 있는 권한들을 갖고 있는지 검사
+     */
     private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
         for (permission in permissions) {
             if (context?.let { ActivityCompat.checkSelfPermission(it, permission) }
@@ -352,7 +353,9 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    // Permission check
+    /**
+     * Permission 검사
+     */
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String?>,
