@@ -1,8 +1,6 @@
 package com.just_graduate.smartcane.network
 
-import android.os.Handler.createAsync
 import android.util.Log
-import androidx.core.os.HandlerCompat.createAsync
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor

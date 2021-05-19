@@ -3,20 +3,18 @@ package com.just_graduate.smartcane.tflite
 import android.content.Context
 import android.content.res.AssetManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.util.Log
+import androidx.camera.core.internal.utils.ImageUtil
+import androidx.core.graphics.ColorUtils
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
-import org.jetbrains.kotlinx.multik.api.d4array
+import com.just_graduate.smartcane.util.ImageUtils
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.api.ndarray
-import org.jetbrains.kotlinx.multik.ndarray.data.get
-import org.jetbrains.kotlinx.multik.ndarray.operations.forEach
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.Tensor
-import org.tensorflow.lite.TensorFlowLite
 import org.tensorflow.lite.gpu.CompatibilityList
-import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -32,7 +30,7 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.math.max
+import kotlin.random.Random
 
 class ImageClassifier(private val context: Context) {
     private var interpreter: Interpreter? = null
@@ -42,9 +40,17 @@ class ImageClassifier(private val context: Context) {
 
     private val executorService: ExecutorService = Executors.newCachedThreadPool()
 
-    private var inputImageWidth: Int = 0
-    private var inputImageHeight: Int = 0
+    private val segmentationMasks: ByteBuffer
+
+    private var inputImageWidth: Int = 272
+    private var inputImageHeight: Int = 480
     private var modelInputSize: Int = 0
+
+    init {
+        segmentationMasks =
+            ByteBuffer.allocateDirect(1 * inputImageWidth * inputImageHeight * NUM_CLASSES * 4)
+        segmentationMasks.order(ByteOrder.nativeOrder())
+    }
 
     fun initialize(): Task<Void> {
         val task = TaskCompletionSource<Void>()
@@ -94,15 +100,31 @@ class ImageClassifier(private val context: Context) {
         return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
     }
 
-    private fun classify(bitmap: Bitmap): String {
+    private fun classify(bitmap: Bitmap): ModelExecutionResult {
         if (!isInitialized) {
             throw IllegalStateException("TF Lite Interpreter is not initialized yet")
         }
 
         var startTime: Long = System.nanoTime()
-        val resizedImage =
-                Bitmap.createScaledBitmap(bitmap, inputImageWidth, inputImageHeight, true)
-        val byteBuffer = convertBitmapToByteBuffer(resizedImage)
+        val scaledBitmap =
+            ImageUtils.scaleBitmapAndKeepRatio(
+                bitmap,
+                inputImageWidth, inputImageHeight
+            )
+        if (scaledBitmap != bitmap){
+            bitmap.recycle()
+        }
+//
+//        val byteBuffer =
+//            ImageUtils.bitmapToByteBuffer(
+//                scaledBitmap,
+//                inputImageWidth,
+//                inputImageHeight,
+//                IMAGE_MEAN,
+//                IMAGE_STD
+//            )
+
+        val byteBuffer = convertBitmapToByteBuffer(scaledBitmap)
 
         var elapsedTime: Long = (System.nanoTime() - startTime) / 1000000
         Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
@@ -112,21 +134,34 @@ class ImageClassifier(private val context: Context) {
 
         startTime = System.nanoTime()
 
-        val probBuffer = TensorBuffer.createFixedSize(intArrayOf(272, 480, 7, 4), DataType.UINT8)
-        interpreter?.run(byteBuffer.buffer, probBuffer.buffer)
+        val probBuffer =
+            ByteBuffer.allocateDirect(1 * inputImageWidth * inputImageHeight * NUM_CLASSES * 4)
+        interpreter?.run(byteBuffer.buffer, probBuffer)
+
+        val (maskImageApplied, maskOnly, itemsFound) =
+            convertByteBufferMaskToBitmap(
+                segmentationMasks, inputImageWidth, inputImageHeight, scaledBitmap,
+                segmentColors
+            )
+
+
         elapsedTime = (System.nanoTime() - startTime) / 1000000
 
         Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
 
-        val result = probBuffer.floatArray
-        Log.d("FXXK", probBuffer.typeSize.toString())
+        val result = probBuffer
+        Log.d("FXXK", probBuffer.toString())
 
-        getOutputInfo(result)
-        return "OUTPUT TENSOR"
+        return ModelExecutionResult(
+            maskImageApplied,
+            scaledBitmap,
+            maskOnly,
+            itemsFound
+        )
     }
 
-    fun classifyAsync(bitmap: Bitmap): Task<String> {
-        val task = TaskCompletionSource<String>()
+    fun classifyAsync(bitmap: Bitmap): Task<ModelExecutionResult> {
+        val task = TaskCompletionSource<ModelExecutionResult>()
         executorService.execute {
             val result = classify(bitmap)
             task.setResult(result)
@@ -134,18 +169,17 @@ class ImageClassifier(private val context: Context) {
         return task.task
     }
 
-    fun close() {
-        executorService.execute {
-            interpreter?.close()
-            Log.d(TAG, "Closed TFLite interpreter")
-        }
-    }
-
     private fun convertBitmapToByteBuffer(bitmap: Bitmap): TensorImage {
         val imageProcessor = ImageProcessor.Builder()
-                .add(ResizeOp(inputImageHeight, inputImageWidth, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
-                .add(NormalizeOp(127.5F, 127.5F))
-                .build()
+            .add(
+                ResizeOp(
+                    inputImageHeight,
+                    inputImageWidth,
+                    ResizeOp.ResizeMethod.NEAREST_NEIGHBOR
+                )
+            )
+            .add(NormalizeOp(0.0F, 255.0F))
+            .build()
 
         var tImage = TensorImage(DataType.FLOAT32)
 
@@ -153,55 +187,90 @@ class ImageClassifier(private val context: Context) {
         tImage = imageProcessor.process(tImage)
         bitmap.recycle()
 
-//        val pixels = IntArray(inputImageWidth * inputImageHeight)
-//        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-//        Log.d("FXXK", "inputImageHeight : $inputImageHeight")
-//        Log.d("FXXK", "inputImageWidth : $inputImageWidth")
-//        Log.d("FXXK", "inputTensorImage : ${inputImageWidth * inputImageHeight}")
-//        Log.d("FXXK", "X 3 : ${inputImageWidth * inputImageHeight * 3}")
-//        Log.d("FXXK", tImage.buffer.toString())
-
         return tImage
     }
 
-    private fun getOutputInfo(output: FloatArray) {
-        val size = 272 * 480
-        val index = 0
-        val sliced = arrayOf(output[index], output[index + size], output[index + size * 2],
-                output[index + size * 3], output[index + size * 4],
-                output[index + size * 5], output[index + size * 6])
+    /**
+     * 모델이 출력한 ByteBuffer 를 마스킹 된 이미지 형태로 변환하는 동작 수행
+     */
+    private fun convertByteBufferMaskToBitmap(
+        inputBuffer: ByteBuffer,
+        imageWidth: Int,
+        imageHeight: Int,
+        backgroundImage: Bitmap,
+        colors: IntArray
+    ): Triple<Bitmap, Bitmap, Map<String, Int>> {
+        val conf = Bitmap.Config.ARGB_8888
+        val maskBitmap = Bitmap.createBitmap(imageWidth, imageHeight, conf)
+        val resultBitmap = Bitmap.createBitmap(imageWidth, imageHeight, conf)
+        val mSegmentBits = Array(imageWidth) { IntArray(imageHeight) }
+        val itemsFound = HashMap<String, Int>()
+        inputBuffer.rewind()
 
-//        Label [0] : ["background"]
-//        Label [1] : ["bike_lane_normal", "sidewalk_asphalt", "sidewalk_urethane"]
-//        Label [2] : ["caution_zone_stairs", "caution_zone_manhole", "caution_zone_tree_zone", "caution_zone_grating", "caution_zone_repair_zone"]
-//        Label [3] : ["alley_crosswalk","roadway_crosswalk"]
-//        Label [4] : ["braille_guide_blocks_normal", "braille_guide_blocks_damaged"]
-//        Label [5] : ["roadway_normal","alley_normal","alley_speed_bump", "alley_damaged"]
-//        Label [6] : ["sidewalk_blocks","sidewalk_cement" , "sidewalk_soil_stone", "sidewalk_damaged","sidewalk_other"]
+        for (y in 0 until imageHeight) {
+            for (x in 0 until imageWidth) {
+                var maxVal = 0f
+                mSegmentBits[x][y] = 0
 
-        Log.d("getOutputInfo0", sliced[0].toString())
-        Log.d("getOutputInfo1", sliced[1].toString())
-        Log.d("getOutputInfo2", sliced[2].toString())
-        Log.d("getOutputInfo3", sliced[3].toString())
-        Log.d("getOutputInfo4", sliced[4].toString())
-        Log.d("getOutputInfo5", sliced[5].toString())
-        Log.d("getOutputInfo6", sliced[6].toString())
+                for (c in 0 until NUM_CLASSES) {
+                    val value = inputBuffer
+                        .getFloat((y * imageWidth * NUM_CLASSES + x * NUM_CLASSES + c) * 4)
+                    if (c == 0 || value > maxVal) {
+                        maxVal = value
+                        mSegmentBits[x][y] = c
+                    }
+                }
+                val label = labelsArrays[mSegmentBits[x][y]]
+                val color = colors[mSegmentBits[x][y]]
+                itemsFound.put(label, color)
+                val newPixelColor = ColorUtils.compositeColors(
+                    colors[mSegmentBits[x][y]],
+                    backgroundImage.getPixel(x, y)
+                )
+                resultBitmap.setPixel(x, y, newPixelColor)
+                maskBitmap.setPixel(x, y, colors[mSegmentBits[x][y]])
+            }
+        }
 
-        Log.d("getOutputMax", sliced.maxByOrNull { it }.toString())
-
-        val tensor = mk.ndarray(output, 272, 480, 7, 4)
-
-//        val result = mk.math.maxD4(tensor, axis = 1)  // Invoke Error (loadLibrary 쪽에서 오류 나는 것 같음)
-
-//        Log.d("Tensor", result[0].toString())
-
+        return Triple(resultBitmap, maskBitmap, itemsFound)
     }
+
 
     companion object {
         private const val TAG = "ImageSegmentation"
         private const val MODEL_FILE = "model.tflite"
         private const val FLOAT_TYPE_SIZE = 4
         private const val PIXEL_SIZE = 1
-        private const val OUTPUT_CLASSES_COUNT = 7
+        private const val NUM_CLASSES = 7
+        private const val IMAGE_MEAN = 127.5f
+        private const val IMAGE_STD = 127.5f
+
+        val segmentColors = IntArray(NUM_CLASSES)
+
+        val labelsArrays = arrayOf(
+            "background", "sidewalk", "caution", "crosswalk", "guide_block",
+            "alley", "sidewalk_damaged"
+        )
+
+        init {
+            val random = Random(System.currentTimeMillis())
+            segmentColors[0] = Color.TRANSPARENT
+            for (i in 1 until NUM_CLASSES) {
+                segmentColors[i] = Color.argb(
+                    (128),
+                    getRandomRGBInt(
+                        random
+                    ),
+                    getRandomRGBInt(
+                        random
+                    ),
+                    getRandomRGBInt(
+                        random
+                    )
+                )
+            }
+        }
+
+        private fun getRandomRGBInt(random: Random) = (255 * random.nextFloat()).toInt()
     }
 }

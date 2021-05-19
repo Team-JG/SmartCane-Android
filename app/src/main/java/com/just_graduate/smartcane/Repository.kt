@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
+import com.just_graduate.smartcane.Constants.DEVICE_NAME
+import com.just_graduate.smartcane.Constants.SPP_UUID
 import com.just_graduate.smartcane.network.NetworkHelper.retrofitService
 import com.just_graduate.smartcane.network.RetrofitService
 import com.just_graduate.smartcane.util.Event
@@ -23,7 +25,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-class Repository: RetrofitService {
+class Repository : RetrofitService {
     var connected: MutableLiveData<Boolean?> = MutableLiveData(null)
     var progressState: MutableLiveData<String> = MutableLiveData("")
 
@@ -46,7 +48,8 @@ class Repository: RetrofitService {
     /**
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
-    override fun getSegmentationResult(image: MultipartBody.Part) = retrofitService.getSegmentationResult(image = image)
+    override fun getSegmentationResult(image: MultipartBody.Part) =
+        retrofitService.getSegmentationResult(image = image)
 
     /**
      * 블루투스 지원 여부
@@ -114,7 +117,7 @@ class Repository: RetrofitService {
                     Log.d("Bluetooth action", action)
                 }
                 val device =
-                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
                     name = device.name // Broadcast 를 보낸 기기의 이름을 가져옴
@@ -122,8 +125,8 @@ class Repository: RetrofitService {
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
-                                BluetoothAdapter.EXTRA_STATE,
-                                BluetoothAdapter.ERROR
+                            BluetoothAdapter.EXTRA_STATE,
+                            BluetoothAdapter.ERROR
                         )
                         when (state) {
                             BluetoothAdapter.STATE_OFF -> {
@@ -136,30 +139,16 @@ class Repository: RetrofitService {
                             }
                         }
                     }
-
-                    BluetoothDevice.ACTION_ACL_CONNECTED -> {
-
-                    }
-
-                    BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
-
-                    }
-
                     BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         connected.postValue(false)
                     }
-
-                    BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
-
-                    }
-
                     BluetoothDevice.ACTION_FOUND -> {
                         if (!foundDevice) {
                             val deviceName = device!!.name
 
                             // "SmartCane" 이라는 기기만 연결
                             if (deviceName != null && deviceName.length > 3) {
-                                if (deviceName == "SmartCane") {
+                                if (deviceName == DEVICE_NAME) {
                                     targetDevice = device
                                     foundDevice = true
                                     textToSpeech(context!!.getString(R.string.try_connect_cane))
@@ -179,8 +168,8 @@ class Repository: RetrofitService {
             }
         }
         BaseApplication.applicationContext().registerReceiver(
-                mBluetoothStateReceiver,
-                stateFilter
+            mBluetoothStateReceiver,
+            stateFilter
         )
     }
 

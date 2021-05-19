@@ -4,9 +4,7 @@ import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.databinding.DataBindingUtil
-import com.just_graduate.smartcane.PERMISSIONS
 import com.just_graduate.smartcane.R
-import com.just_graduate.smartcane.REQUEST_ALL_PERMISSION
 import com.just_graduate.smartcane.databinding.ActivityMainBinding
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
@@ -17,15 +15,15 @@ import android.graphics.BitmapFactory
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
-import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.just_graduate.smartcane.Constants.PERMISSIONS
+import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
 import com.just_graduate.smartcane.tflite.ImageClassifier
 import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.showToast
@@ -33,12 +31,9 @@ import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import org.koin.android.ext.android.bind
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.*
 import java.lang.Exception
@@ -122,33 +117,37 @@ class MainActivity : AppCompatActivity() {
 
                     showToast("Capture Succeeded: $image")
 
-                    binding.captureResult.setImageBitmap(bitmap)
-                    val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+//                    binding.captureResult.setImageBitmap(bitmap)
+3
+//                     TF Lite 모델에 이미지 입력
+                        imageClassifier.classifyAsync(bitmap)
+                                .addOnSuccessListener { result ->
+                                    Log.d(TAG, "SUCCESS!")
+                                    Log.d(TAG, result.itemsFound.toString())
+                                    binding.captureResult.setImageBitmap(result.bitmapResult)
+                                    bitmap.recycle()
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e(TAG, "ERROR")
+                                }
+                        super.onCaptureSuccess(image)
 
-                    viewModel.getSegmentationResult(body)
-                    viewModel.segmentationResult.observe(
-                        this@MainActivity,
-                        {
-                            Log.d(TAG, it.result)
-
-                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
-                        }
-                    )
+//                    val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+//
+//                    viewModel.getSegmentationResult(body)
+//                    viewModel.segmentationResult.observe(
+//                        this@MainActivity,
+//                        {
+//                            Log.d(TAG, it.result)
+//
+//                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
+//                        }
+//                    )
                 }
             }
         )
     }
 
-    // TF Lite 모델에 이미지 입력
-//                        imageClassifier.classifyAsync(bitmap)
-//                                .addOnSuccessListener { resultText ->
-//                                    Log.d(TAG, "SUCCESS!")
-//                                    Log.d(TAG, resultText)
-//                                }
-//                                .addOnFailureListener { e ->
-//                                    Log.e(TAG, "ERROR")
-//                                }
-//                        super.onCaptureSuccess(image)
 
 
     /**
@@ -205,9 +204,14 @@ class MainActivity : AppCompatActivity() {
 
                 binding.captureResult.setImageBitmap(bitmap)
                 imageClassifier.classifyAsync(bitmap)
-                    .addOnSuccessListener { resultText ->
+                    .addOnSuccessListener { result ->
                         Log.d(TAG, "SUCCESS!")
-                        Log.d(TAG, resultText)
+                        Log.d(TAG, result.itemsFound.toString())
+                        try{
+                            binding.captureResult.setImageBitmap(result.bitmapResult)
+                        }catch (e: Exception){
+                            Log.e(TAG, e.message!!)
+                        }
                     }
                     .addOnFailureListener { e ->
                         Log.e(TAG, "ERROR")

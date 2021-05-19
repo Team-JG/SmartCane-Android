@@ -36,7 +36,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = repository.putTxt
 
     // 딥 러닝 API 호출 결과 받을 시 변화하는 LiveData
-    val _segmentationResult = MutableLiveData<SegmentationResult>()
+    private val _segmentationResult = MutableLiveData<SegmentationResult>()
     val segmentationResult: LiveData<SegmentationResult>
         get() = _segmentationResult
 
