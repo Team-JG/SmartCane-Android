@@ -299,7 +299,17 @@ class Repository : RetrofitService {
                              */
                             for (i in 0 until bytesAvailable) {
                                 val b = packetBytes[i]
+
                                 Log.d("inputData", String.format("%02x", b))
+                                Log.d("inputData", b.toString())
+
+                                if (String.format("%02x", b) == "01"){
+                                    textToSpeech("지팡이를 놓쳤습니다. 지팡이를 다시 잡지 않으면 20초 후 SOS 호출을 합니다")
+                                }
+
+                                if (String.format("%02x", b) == "02"){
+                                    textToSpeech("지팡이를 다시 잡으셨군요. 안전 보행 하세요.")
+                                }
                             }
                         }
                     }

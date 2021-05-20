@@ -12,16 +12,20 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.bumptech.glide.Glide
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
 import com.just_graduate.smartcane.tflite.ImageClassifier
@@ -190,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         return file
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -200,15 +205,22 @@ class MainActivity : AppCompatActivity() {
             if (resultCode == Activity.RESULT_OK) {
                 val resultUri = result.uri
                 val bitmap =
+//                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, resultUri))
+
                     MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
 
-                binding.captureResult.setImageBitmap(bitmap)
+                Glide
+                    .with(this)
+                    .load(resultUri)
+                    .centerCrop()
+                    .into(binding.captureResult)
+
                 imageClassifier.classifyAsync(bitmap)
-                    .addOnSuccessListener { result ->
+                    .addOnSuccessListener {
                         Log.d(TAG, "SUCCESS!")
-                        Log.d(TAG, result.itemsFound.toString())
+                        Log.d(TAG, it.itemsFound.toString())
                         try{
-                            binding.captureResult.setImageBitmap(result.bitmapResult)
+                            binding.captureResult.setImageBitmap(it.bitmapResult)
                         }catch (e: Exception){
                             Log.e(TAG, e.message!!)
                         }

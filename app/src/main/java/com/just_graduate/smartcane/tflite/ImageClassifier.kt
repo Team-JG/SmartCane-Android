@@ -5,13 +5,10 @@ import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.Log
-import androidx.camera.core.internal.utils.ImageUtil
 import androidx.core.graphics.ColorUtils
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.just_graduate.smartcane.util.ImageUtils
-import org.jetbrains.kotlinx.multik.api.mk
-import org.jetbrains.kotlinx.multik.api.ndarray
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.CompatibilityList
@@ -20,7 +17,6 @@ import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.io.FileInputStream
 import java.io.IOException
 import java.lang.IllegalStateException
@@ -39,7 +35,6 @@ class ImageClassifier(private val context: Context) {
         private set
 
     private val executorService: ExecutorService = Executors.newCachedThreadPool()
-
     private val segmentationMasks: ByteBuffer
 
     private var inputImageWidth: Int = 272
@@ -62,7 +57,6 @@ class ImageClassifier(private val context: Context) {
                 task.setException(e)
             }
         }
-
         return task.task
     }
 
@@ -111,10 +105,7 @@ class ImageClassifier(private val context: Context) {
                 bitmap,
                 inputImageWidth, inputImageHeight
             )
-        if (scaledBitmap != bitmap){
-            bitmap.recycle()
-        }
-//
+
 //        val byteBuffer =
 //            ImageUtils.bitmapToByteBuffer(
 //                scaledBitmap,
@@ -204,6 +195,12 @@ class ImageClassifier(private val context: Context) {
         val maskBitmap = Bitmap.createBitmap(imageWidth, imageHeight, conf)
         val resultBitmap = Bitmap.createBitmap(imageWidth, imageHeight, conf)
         val mSegmentBits = Array(imageWidth) { IntArray(imageHeight) }
+        val scaledBackgroundImage =
+            ImageUtils.scaleBitmapAndKeepRatio(
+                backgroundImage,
+                imageWidth,
+                imageHeight
+            )
         val itemsFound = HashMap<String, Int>()
         inputBuffer.rewind()
 
@@ -223,9 +220,12 @@ class ImageClassifier(private val context: Context) {
                 val label = labelsArrays[mSegmentBits[x][y]]
                 val color = colors[mSegmentBits[x][y]]
                 itemsFound.put(label, color)
+                itemsFound.forEach{
+                    Log.d(TAG, it.toString())
+                }
                 val newPixelColor = ColorUtils.compositeColors(
                     colors[mSegmentBits[x][y]],
-                    backgroundImage.getPixel(x, y)
+                    scaledBackgroundImage.getPixel(x, y)
                 )
                 resultBitmap.setPixel(x, y, newPixelColor)
                 maskBitmap.setPixel(x, y, colors[mSegmentBits[x][y]])
