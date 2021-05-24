@@ -8,7 +8,14 @@ import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.Repository
 import com.just_graduate.smartcane.data.SegmentationResult
 import com.just_graduate.smartcane.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
+import timber.log.Timber
 import java.nio.charset.Charset
 
 class MainViewModel(private val repository: Repository) : BaseViewModel() {
@@ -88,21 +95,18 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
      * 찍힌 이미지에 대하여 Segmentation Result 요청
      * - Django 서버 API 통해서 결과 얻음
      * - Django 서버에 pspunet 기반의 인도 보행 이미지 분석 모델 탑재
+     * - Coroutines Flow 를 활용한 비동기 스트림
      */
     fun getSegmentationResult(image: MultipartBody.Part) {
-        addDisposable(
-            repository.getSegmentationResult(image = image)
-                .applySchedulers()
-                .subscribe(
-                    {
-                        _segmentationResult.value = it
-                        Log.d("TEST", it.result)
-                    },
-                    {
-                        Log.e("TEST ERROR", it.message.toString())
-                    }
-                )
-        )
+        val data = flow { emit(repository.getSegmentationResult(image = image)) }
+        viewModelScope.launch {
+            data.catch { Timber.i(it) }
+                .flowOn(Dispatchers.IO)
+                .collect {
+                    Timber.d(it.result)
+                    _segmentationResult.value = it
+                }
+        }
     }
 
 }

@@ -8,6 +8,7 @@ import retrofit2.Retrofit
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 
 import retrofit2.converter.gson.GsonConverterFactory
+import timber.log.Timber
 
 object NetworkHelper {
     private const val serverBaseUrl = "http://localhost"
@@ -15,36 +16,36 @@ object NetworkHelper {
     var token: String = ""
 
     private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.NONE
-        })
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.NONE
+            })
 
-        .addInterceptor {
-            // Request
-            val request = it.request()
-                .newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .build()
+            .addInterceptor {
+                // Request
+                val request = it.request()
+                        .newBuilder()
+                        .addHeader("Authorization", "Bearer $token")
+                        .build()
 
-            Log.d("OkHTTP", "request: ${it.request()}")
-            Log.d("OkHTTP", "request header: ${it.request().headers}")
+                Timber.d("request: ${it.request()}")
+                Timber.d("request header: ${it.request().headers}")
 
-            // Response
-            val response = it.proceed(request)
+                // Response
+                val response = it.proceed(request)
 
-            Log.d("OkHTTP", "response : $response")
-            Log.d("OkHTTP", "response header: ${response.headers}")
-            response
-        }.build()
+                Timber.d("response : $response")
+                Timber.d("response header: ${response.headers}")
+                response
+            }.build()
 
     private val gson = GsonBuilder().setLenient().create()
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl(serverBaseUrl)
-        .client(okHttpClient)
-        .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
-        .addConverterFactory(GsonConverterFactory.create(gson))
-        .build()
+            .baseUrl(serverBaseUrl)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
+            .build()
 
     val retrofitService: RetrofitService = retrofit.create(RetrofitService::class.java)
 }
