@@ -57,8 +57,9 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     val count: MutableLiveData<Int> = MutableLiveData(20)
 
     // 사용자 현재 위치 관련
-    val currentAddress: LiveData<String>
+    val currentAddress: MutableLiveData<String>
         get() = repository.currentAddress
+    val currentAddressText: ObservableField<String> = ObservableField("")
 
 
     fun setInProgress(en: Boolean) {

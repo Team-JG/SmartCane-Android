@@ -88,6 +88,7 @@ class Repository : RetrofitService {
             .getAddressLine(0)
         currentAddress.value = address
         Timber.d("ADDRESS : ${address}")
+        Timber.d("ADDRESS : ${currentAddress.value}")
     }
 
     /**

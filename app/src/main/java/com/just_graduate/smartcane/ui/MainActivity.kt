@@ -367,6 +367,11 @@ class MainActivity : AppCompatActivity() {
 
         // Repository 의 LocationManager 초기화를 위한 Context 전달
         viewModel.initLocationManager(context = this)
+        viewModel.currentAddress.observe(this, {
+            viewModel.currentAddressText.set(it)
+            Timber.d("FXXK ADDRESS ${it}")
+            Timber.d("FXXK ADDRESS ${viewModel.currentAddressText.get()}")
+        })
     }
 
     /**
