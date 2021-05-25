@@ -25,6 +25,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
@@ -303,7 +304,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun initObserving() {
-        // Progress
+        // Loading Progress
         viewModel.inProgress.observe(this, {
             if (it.getContentIfNotHandled() == true) {
                 viewModel.inProgressView.set(true)
@@ -312,12 +313,12 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Progress text
+        // Loading Progress text
         viewModel.progressState.observe(this, {
             viewModel.txtProgress.set(it)
         })
 
-        // Bluetooth On 요청
+        // Bluetooth ON 요청
         viewModel.requestBleOn.observe(this, {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startForResult.launch(enableBtIntent)
@@ -340,19 +341,27 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Bluetooth Connect Error
+        // Bluetooth 연결 오류 이벤트
         viewModel.connectError.observe(this, {
             Util.showToast("연결 도중 오류가 발생하였습니다. 기기를 확인해주세요.")
             viewModel.setInProgress(false)
         })
 
-        //Data Receive
+        // 아두이노로부터 수신받은 블루투스 데이터
         viewModel.putTxt.observe(this, {
             if (it != null) {
                 recv += it
                 viewModel.txtRead.set(recv)
             }
         })
+
+        // 아두이노 (지팡이) 낙상 감지 이벤트
+        viewModel.isFallDetected.observe(this, {
+            if (it == true){
+                viewModel.doCountDownJob()
+            }
+        })
+
     }
 
     /**

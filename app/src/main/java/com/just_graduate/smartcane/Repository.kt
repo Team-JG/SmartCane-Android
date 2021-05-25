@@ -16,10 +16,10 @@ import com.just_graduate.smartcane.network.RetrofitService
 import com.just_graduate.smartcane.util.Event
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.util.Util.textToSpeech
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
+import timber.log.Timber
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -45,11 +45,14 @@ class Repository : RetrofitService {
 
     var foundDevice: Boolean = false
 
+    // 낙상 감지 관련
+    val isFallDetected: MutableLiveData<Boolean> = MutableLiveData(false)
+
     /**
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
     override fun getSegmentationResult(image: MultipartBody.Part) =
-        retrofitService.getSegmentationResult(image = image)
+            retrofitService.getSegmentationResult(image = image)
 
     /**
      * 블루투스 지원 여부
@@ -117,7 +120,7 @@ class Repository : RetrofitService {
                     Log.d("Bluetooth action", action)
                 }
                 val device =
-                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
                     name = device.name // Broadcast 를 보낸 기기의 이름을 가져옴
@@ -125,8 +128,8 @@ class Repository : RetrofitService {
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
-                            BluetoothAdapter.EXTRA_STATE,
-                            BluetoothAdapter.ERROR
+                                BluetoothAdapter.EXTRA_STATE,
+                                BluetoothAdapter.ERROR
                         )
                         when (state) {
                             BluetoothAdapter.STATE_OFF -> {
@@ -168,8 +171,8 @@ class Repository : RetrofitService {
             }
         }
         BaseApplication.applicationContext().registerReceiver(
-            mBluetoothStateReceiver,
-            stateFilter
+                mBluetoothStateReceiver,
+                stateFilter
         )
     }
 
@@ -192,8 +195,8 @@ class Repository : RetrofitService {
                 mOutputStream = socket?.outputStream
                 mInputStream = socket?.inputStream
 
-                // 데이터 수신
-                beginListenForData()
+                // 아두이노로부터 오는 데이터 수신 (지팡이 낙상 감지 등)
+                beginListenForFallDetection()
 
             } catch (e: java.lang.Exception) {
                 // 블루투스 연결 중 오류 발생
@@ -276,41 +279,28 @@ class Repository : RetrofitService {
     }
 
     /**
-     * 블루투스 데이터 수신 Listener
+     * 아두이노 블루투스 데이터 수신 Listener 생성 (Thread 실행)
      */
     @ExperimentalUnsignedTypes
-    fun beginListenForData() {
+    fun beginListenForFallDetection() {
         val mWorkerThread = Thread {
             while (!Thread.currentThread().isInterrupted) {
                 try {
                     val bytesAvailable = mInputStream?.available()
                     if (bytesAvailable != null) {
-                        if (bytesAvailable > 0) { //데이터가 수신된 경우
+                        if (bytesAvailable > 0) { // 블루투스 통신 데이터가 수신된 경우
+
+                            /**
+                             * 한 바이트에 대해서만 처리 (아두이노 단에서 1 바이트씩만 보냄)
+                             * - 01 : 지팡이를 놓친 상황
+                             * - 02 : 지팡이를 놓쳤다가 다시 잡은 상황
+                             */
                             val packetBytes = ByteArray(bytesAvailable)
                             mInputStream?.read(packetBytes)
-                            /**
-                             * 한 버퍼 처리
-                             */
-                            val s = String(packetBytes, Charsets.UTF_8)
-                            putTxt.postValue(s)
+                            val data = packetBytes[0]
 
-                            /**
-                             * 한 바이트씩 처리
-                             */
-                            for (i in 0 until bytesAvailable) {
-                                val b = packetBytes[i]
-
-                                Log.d("inputData", String.format("%02x", b))
-                                Log.d("inputData", b.toString())
-
-                                if (String.format("%02x", b) == "01"){
-                                    textToSpeech("지팡이를 놓쳤습니다. 지팡이를 다시 잡지 않으면 20초 후 SOS 호출을 합니다")
-                                }
-
-                                if (String.format("%02x", b) == "02"){
-                                    textToSpeech("지팡이를 다시 잡으셨군요. 안전 보행 하세요.")
-                                }
-                            }
+                            // 낙상 감지 관련 데이터에 대응하는 동작을 수행하는 메소드 호출
+                            handleFallDetectionData(data)
                         }
                     }
                 } catch (e: UnsupportedEncodingException) {
@@ -320,9 +310,29 @@ class Repository : RetrofitService {
                 }
             }
         }
-        //데이터 수신 thread 시작
+        // 블루투스 데이터 수신 thread 시작
         mWorkerThread.start()
     }
 
+    /**
+     * 아두이노가 보낸 낙상감지 관련 데이터를 핸들링하는 메소드
+     * - 01 : 지팡이를 놓친 상황 => 지팡이를 다시 잡으라는 TTS 발생 후 20초 카운트 다운 ( TODO 카운트 다운 종료 후 SOS 호출 )
+     * - 02 : 지팡이를 놓쳤다가 다시 잡은 상황 => 카운트 다운을 멈추고 안전 보행하라는 TTS 발생
+     */
+    private fun handleFallDetectionData(data: Byte) {
+        Log.d("inputData", String.format("%02x", data))
+        Log.d("inputData", data.toString())
 
+        // 지팡이를 놓쳤다는 신호를 받았을 때
+        if (String.format("%02x", data) == "01") {
+            textToSpeech("지팡이를 놓쳤습니다. 지팡이를 다시 잡지 않으면 20초 후 SOS 호출을 합니다")
+            isFallDetected.value = true
+        }
+
+        // 지팡이를 다시 잡았다는 신호를 받았을 때
+        if (String.format("%02x", data) == "02") {
+            textToSpeech("지팡이를 다시 잡으셨군요. 안전 보행 하세요.")
+            isFallDetected.value = false
+        }
+    }
 }
