@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-    dataBinding {
-        enabled true
+    buildFeatures{
+        dataBinding true
     }
 
     compileSdkVersion 30
@@ -110,5 +110,8 @@ dependencies {
 
     // Timber
     implementation 'com.jakewharton.timber:timber:4.7.1'
+
+    // GeoCoder
+    implementation 'com.google.android.gms:play-services-maps:17.0.1'
 
 }

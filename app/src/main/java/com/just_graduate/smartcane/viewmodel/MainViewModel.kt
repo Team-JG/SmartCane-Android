@@ -1,5 +1,6 @@
 package com.just_graduate.smartcane.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
@@ -38,6 +39,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = repository.connectError
 
     val txtRead: ObservableField<String> = ObservableField("")
+
     val putTxt: LiveData<String>
         get() = repository.putTxt
 
@@ -47,14 +49,23 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = _segmentationResult
 
     // 낙상 감지 관련
+    val isFallDetectedFlag = ObservableBoolean(false)
     val isFallDetected: LiveData<Boolean>
         get() = repository.isFallDetected
 
     private lateinit var countDownJob: Job
     val count: MutableLiveData<Int> = MutableLiveData(20)
 
+    // 사용자 현재 위치 관련
+    val currentAddress: LiveData<String>
+        get() = repository.currentAddress
+
     fun setInProgress(en: Boolean) {
         repository.inProgress.value = Event(en)
+    }
+
+    fun initLocationManager(context: Context) {
+        repository.initLocationManager(context)
     }
 
     /**
@@ -127,7 +138,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         if (coroutineStatus == "Active") {
             cancelCountDownJob()
         } else {
-            viewModelScope.launch(countDownJob){
+            viewModelScope.launch(countDownJob) {
                 decreaseCount()  // 카운트 다운 시작
             }
         }
@@ -153,6 +164,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     private fun cancelCountDownJob() {
         if (countDownJob.isActive || countDownJob.isCompleted) {
             count.value = 20
+            isFallDetectedFlag.set(false)
             countDownJob.cancel()
         }
     }

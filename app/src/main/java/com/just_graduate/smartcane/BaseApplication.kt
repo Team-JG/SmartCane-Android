@@ -8,6 +8,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidFileProperties
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import timber.log.Timber
 
 class BaseApplication : Application() {
 
@@ -26,6 +27,7 @@ class BaseApplication : Application() {
         super.onCreate()
 
         startKoin {
+            Timber.plant(Timber.DebugTree())
             // 로그를 찍어볼 수 있다.
             // 에러확인 - androidLogger(Level.ERROR)
             androidLogger()

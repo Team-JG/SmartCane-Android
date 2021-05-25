@@ -1,5 +1,7 @@
 package com.just_graduate.smartcane
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
@@ -7,8 +9,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
 import com.just_graduate.smartcane.Constants.DEVICE_NAME
 import com.just_graduate.smartcane.Constants.SPP_UUID
 import com.just_graduate.smartcane.network.NetworkHelper.retrofitService
@@ -48,11 +59,59 @@ class Repository : RetrofitService {
     // 낙상 감지 관련
     val isFallDetected: MutableLiveData<Boolean> = MutableLiveData(false)
 
+    // 사용자 현재 위치 관련
+    private lateinit var locationManager: LocationManager
+    private lateinit var context: Context
+    val currentAddress: MutableLiveData<String> = MutableLiveData("")
+
+    companion object {
+        const val MIN_TIME_MS = 10000L
+        const val MIN_DISTANCE_METER = 1f
+    }
+
+    /**
+     * 사용자 위치 (위,경도) 가 바뀔 때 마다 호출되는 onLocationChanged() 리스너
+     */
+    private val locationListener =
+        LocationListener {
+            Timber.d("Location : ${it.longitude}")
+            it.let {
+                val position = LatLng(it.latitude, it.longitude)
+                Timber.d("LATITUDE : ${position.latitude} and LONGITUDE : ${position.longitude}")
+                getAddress(position)
+            }
+        }
+
+    private fun getAddress(position: LatLng) {
+        val geoCoder = Geocoder(context, Locale.getDefault())
+        val address = geoCoder.getFromLocation(position.latitude, position.longitude, 1).first()
+            .getAddressLine(0)
+    }
+
+    /**
+     * MainActivity Init 시점에서 context 전달 받아 LocationManager 초기화
+     * - PermissionGranted 확인 상태에서 호출했으므로 SuppressLint 추가
+     */
+    @SuppressLint("MissingPermission")
+    fun initLocationManager(context: Context) {
+        Timber.d("Location Manager Init")
+
+        locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        this.context = context
+
+        locationManager.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            MIN_TIME_MS,
+            MIN_DISTANCE_METER,
+            locationListener
+        )
+    }
+
     /**
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
     override fun getSegmentationResult(image: MultipartBody.Part) =
-            retrofitService.getSegmentationResult(image = image)
+        retrofitService.getSegmentationResult(image = image)
 
     /**
      * 블루투스 지원 여부
@@ -120,7 +179,7 @@ class Repository : RetrofitService {
                     Log.d("Bluetooth action", action)
                 }
                 val device =
-                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
                     name = device.name // Broadcast 를 보낸 기기의 이름을 가져옴
@@ -128,8 +187,8 @@ class Repository : RetrofitService {
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
-                                BluetoothAdapter.EXTRA_STATE,
-                                BluetoothAdapter.ERROR
+                            BluetoothAdapter.EXTRA_STATE,
+                            BluetoothAdapter.ERROR
                         )
                         when (state) {
                             BluetoothAdapter.STATE_OFF -> {
@@ -171,8 +230,8 @@ class Repository : RetrofitService {
             }
         }
         BaseApplication.applicationContext().registerReceiver(
-                mBluetoothStateReceiver,
-                stateFilter
+            mBluetoothStateReceiver,
+            stateFilter
         )
     }
 
@@ -335,4 +394,5 @@ class Repository : RetrofitService {
             isFallDetected.value = false
         }
     }
+
 }

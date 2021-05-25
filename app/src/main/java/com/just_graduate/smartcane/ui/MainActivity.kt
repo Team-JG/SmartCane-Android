@@ -12,7 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
+import android.location.LocationManager
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -25,7 +25,6 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
@@ -40,6 +39,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import timber.log.Timber
 import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
@@ -70,12 +70,13 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
 
+
         /**
          * Image Classifier 초기화
          * TODO : 딥 러닝 API 호출 시 Image Classifier 제거
          */
         imageClassifier.initialize().addOnFailureListener {
-            Log.e(TAG, "Error to setting up classifier", it)
+            Timber.e(it)
         }
 
         /**
@@ -359,9 +360,12 @@ class MainActivity : AppCompatActivity() {
         viewModel.isFallDetected.observe(this, {
             if (it == true){
                 viewModel.doCountDownJob()
+                viewModel.isFallDetectedFlag.set(true)
             }
         })
 
+        // Repository 의 LocationManager 초기화를 위한 Context 전달
+        viewModel.initLocationManager(context = this)
     }
 
     /**
@@ -391,6 +395,7 @@ class MainActivity : AppCompatActivity() {
             REQUEST_ALL_PERMISSION -> {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
                     Toast.makeText(this, "Permissions granted!", Toast.LENGTH_SHORT).show()
                 } else {
                     requestPermissions(permissions, REQUEST_ALL_PERMISSION)

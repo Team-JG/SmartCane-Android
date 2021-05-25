@@ -46,11 +46,20 @@
                 android:textColor="@color/white"
                 android:textStyle="bold" />
 
+<!--            <TextView-->
+<!--                android:textSize="18sp"-->
+<!--                android:visibility="@{viewModel.isFallDetectedFlag?View.VISIBLE:View.GONE}"-->
+<!--                android:text="@{viewModel.count}"-->
+<!--                android:textColor="#B30000"-->
+<!--                android:layout_marginVertical="16dp"-->
+<!--                android:layout_gravity="center"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"/>-->
+
             <TextView
                 android:textSize="18sp"
-                android:visibility="@{viewModel.isFallDetected()?View.GONE:View.VISIBLE"
-                android:text="@{viewModel.count}"
-                android:textColor="#B30000"
+                android:text="@{viewModel.currentAddress}"
+                android:textColor="#2196F3"
                 android:layout_marginVertical="16dp"
                 android:layout_gravity="center"
                 android:layout_width="wrap_content"
