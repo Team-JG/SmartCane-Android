@@ -60,6 +60,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     val currentAddress: LiveData<String>
         get() = repository.currentAddress
 
+
     fun setInProgress(en: Boolean) {
         repository.inProgress.value = Event(en)
     }

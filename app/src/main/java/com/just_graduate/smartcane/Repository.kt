@@ -65,7 +65,7 @@ class Repository : RetrofitService {
     val currentAddress: MutableLiveData<String> = MutableLiveData("")
 
     companion object {
-        const val MIN_TIME_MS = 10000L
+        const val MIN_TIME_MS = 5000L
         const val MIN_DISTANCE_METER = 1f
     }
 
@@ -86,6 +86,8 @@ class Repository : RetrofitService {
         val geoCoder = Geocoder(context, Locale.getDefault())
         val address = geoCoder.getFromLocation(position.latitude, position.longitude, 1).first()
             .getAddressLine(0)
+        currentAddress.value = address
+        Timber.d("ADDRESS : ${address}")
     }
 
     /**
@@ -101,6 +103,12 @@ class Repository : RetrofitService {
 
         locationManager.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
+            MIN_TIME_MS,
+            MIN_DISTANCE_METER,
+            locationListener
+        )
+        locationManager.requestLocationUpdates(
+            LocationManager.NETWORK_PROVIDER,
             MIN_TIME_MS,
             MIN_DISTANCE_METER,
             locationListener
