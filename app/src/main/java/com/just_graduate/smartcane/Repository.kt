@@ -1,6 +1,5 @@
 package com.just_graduate.smartcane
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -9,16 +8,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.location.Geocoder
-import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Bundle
+import android.telephony.SmsManager
 import android.util.Log
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.just_graduate.smartcane.Constants.DEVICE_NAME
 import com.just_graduate.smartcane.Constants.SPP_UUID
@@ -119,8 +114,8 @@ class Repository : RetrofitService {
     /**
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
-    override fun getSegmentationResult(image: MultipartBody.Part) =
-        retrofitService.getSegmentationResult(image = image)
+    override fun getImageSegmentationResult(image: MultipartBody.Part) =
+        retrofitService.getImageSegmentationResult(image = image)
 
     /**
      * 블루투스 지원 여부
@@ -403,5 +398,17 @@ class Repository : RetrofitService {
             isFallDetected.value = false
         }
     }
+
+    /**
+     * 긴급 SOS 호출을 하는 메세지 전송을 위한 메소드
+     * - 낙상 지 20초 카운트 다운이 끝났을 때 발동
+     */
+    private fun sendSMS(){
+        val addressText = currentAddress.value
+        val smsText = "${addressText} -> 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
+        val smsManager = SmsManager.getDefault()
+        smsManager.sendTextMessage("01023813473", null, smsText, null, null)
+    }
+
 
 }

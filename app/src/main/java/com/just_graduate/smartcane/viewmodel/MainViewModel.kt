@@ -1,13 +1,12 @@
 package com.just_graduate.smartcane.viewmodel
 
 import android.content.Context
-import android.util.Log
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
 import androidx.lifecycle.*
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.Repository
-import com.just_graduate.smartcane.data.SegmentationResult
+import com.just_graduate.smartcane.data.DetectedObject
 import com.just_graduate.smartcane.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.catch
@@ -44,8 +43,8 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = repository.putTxt
 
     // 딥 러닝 API 호출 결과 받을 시 변화하는 LiveData
-    private val _segmentationResult = MutableLiveData<SegmentationResult>()
-    val segmentationResult: LiveData<SegmentationResult>
+    private val _segmentationResult = MutableLiveData<List<DetectedObject>>()
+    val segmentationResult: LiveData<List<DetectedObject>>
         get() = _segmentationResult
 
     // 낙상 감지 관련
@@ -117,17 +116,15 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
      * - Coroutines Flow 를 활용한 비동기 스트림
      */
     fun getSegmentationResult(image: MultipartBody.Part) {
-        val data = flow { emit(repository.getSegmentationResult(image = image)) }
+        val data = flow { emit(repository.getImageSegmentationResult(image = image)) }
         viewModelScope.launch {
             data.catch { Timber.i(it) }
-                .flowOn(Dispatchers.IO)
-                .collect {
-                    Timber.d(it.result)
-                    _segmentationResult.value = it
-                }
+                    .flowOn(Dispatchers.IO)
+                    .collect {
+                        _segmentationResult.value = it
+                    }
         }
     }
-
 
     private fun initCountDownJob() {
         countDownJob = Job()
@@ -170,5 +167,4 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
             countDownJob.cancel()
         }
     }
-
 }

@@ -12,9 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -28,9 +25,15 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
-import com.google.android.gms.maps.model.LatLng
+import com.just_graduate.smartcane.Constants.CAUTION_ZONE
+import com.just_graduate.smartcane.Constants.CROSS_WALK
+import com.just_graduate.smartcane.Constants.FRONT
+import com.just_graduate.smartcane.Constants.LEFT
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
+import com.just_graduate.smartcane.Constants.RIGHT
+import com.just_graduate.smartcane.Constants.ROAD_WAY
+import com.just_graduate.smartcane.data.DetectedObject
 import com.just_graduate.smartcane.tflite.ImageClassifier
 import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.showToast
@@ -47,6 +50,7 @@ import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
+import java.util.stream.IntStream.range
 
 
 class MainActivity : AppCompatActivity() {
@@ -95,6 +99,16 @@ class MainActivity : AppCompatActivity() {
         binding.loadImageButton.setOnClickListener {
             loadImage()
         }
+
+//        try{
+//            val smsText = "순천향로 8-1 => 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
+//            val smsManager = SmsManager.getDefault()
+//            smsManager.sendTextMessage("01023813473", null, smsText, null, null)
+//            Timber.d("SEND MESSAGE!")
+//        } catch (e: Exception){
+//            Timber.i(e)
+//        }
+
     }
 
     // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함, 현재 1회 추론에 약 7초로 매우 느림)
@@ -106,55 +120,55 @@ class MainActivity : AppCompatActivity() {
         // - CallBack 메소드는 OnImageCapturedCallback() 을 사용하여
         // - Bitmap 형식의 이미지를 핸들링할 수 있도록 함
         imageCapture.takePicture(
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onError(exception: ImageCaptureException) {
-                    Log.e(TAG, "Capture Failed: ${exception.message}", exception)
-                }
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.e(TAG, "Capture Failed: ${exception.message}", exception)
+                    }
 
-                /**
-                 * 촬영한 이미지를 통해 딥 러닝 서버 API 를 호출하여, 결과를 핸들링함
-                 * - ImageProxy => Bitmap => File => MultipartBody.Part => API 호출 동작 수행
-                 * - API 호출이 완료되면, segmentationResult 라는 LiveData 에 API 호출 결과 담김
-                 * - TODO : 호출 결과를 통해 TTS 안내 등 동작 정의 필요
-                 */
+                    /**
+                     * 촬영한 이미지를 통해 딥 러닝 서버 API 를 호출하여, 결과를 핸들링함
+                     * - ImageProxy => Bitmap => File => MultipartBody.Part => API 호출 동작 수행
+                     * - API 호출이 완료되면, segmentationResult 라는 LiveData 에 API 호출 결과 담김
+                     * - TODO : 호출 결과를 통해 TTS 안내 등 동작 정의 필요
+                     */
 
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = imageProxyToBitmap(image)
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        val bitmap = imageProxyToBitmap(image)
 
-                    showToast("Capture Succeeded: $image")
+                        showToast("Capture Succeeded: $image")
 
 //                    binding.captureResult.setImageBitmap(bitmap)
-3
-//                     TF Lite 모델에 이미지 입력
-                        imageClassifier.classifyAsync(bitmap)
-                                .addOnSuccessListener { result ->
-                                    Log.d(TAG, "SUCCESS!")
-                                    Log.d(TAG, result.itemsFound.toString())
-                                    binding.captureResult.setImageBitmap(result.bitmapResult)
-                                    bitmap.recycle()
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e(TAG, "ERROR")
-                                }
-                        super.onCaptureSuccess(image)
 
-//                    val body: MultipartBody.Part = buildImageBodyPart(bitmap)
-//
-//                    viewModel.getSegmentationResult(body)
-//                    viewModel.segmentationResult.observe(
-//                        this@MainActivity,
-//                        {
-//                            Log.d(TAG, it.result)
-//
-//                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
-//                        }
-//                    )
+//                     TF Lite 모델에 이미지 입력
+//                        imageClassifier.classifyAsync(bitmap)
+//                                .addOnSuccessListener { result ->
+//                                    Log.d(TAG, "SUCCESS!")
+//                                    Log.d(TAG, result.itemsFound.toString())
+//                                    binding.captureResult.setImageBitmap(result.bitmapResult)
+//                                    bitmap.recycle()
+//                                }
+//                                .addOnFailureListener { e ->
+//                                    Log.e(TAG, "ERROR")
+//                                }
+//                        super.onCaptureSuccess(image)
+
+                        val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+
+                        viewModel.getSegmentationResult(body)
+                        viewModel.segmentationResult.observe(
+                                this@MainActivity,
+                                {
+                                    interpretImageSegmentationResult(it)
+
+                                    // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
+                                    //  아직 Object 형태 정해진 거 없음
+                                }
+                        )
+                    }
                 }
-            }
         )
     }
-
 
 
     /**
@@ -210,27 +224,27 @@ class MainActivity : AppCompatActivity() {
                 val bitmap =
 //                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, resultUri))
 
-                    MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
+                        MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
 
                 Glide
-                    .with(this)
-                    .load(resultUri)
-                    .centerCrop()
-                    .into(binding.captureResult)
+                        .with(this)
+                        .load(resultUri)
+                        .centerCrop()
+                        .into(binding.captureResult)
 
                 imageClassifier.classifyAsync(bitmap)
-                    .addOnSuccessListener {
-                        Log.d(TAG, "SUCCESS!")
-                        Log.d(TAG, it.itemsFound.toString())
-                        try{
-                            binding.captureResult.setImageBitmap(it.bitmapResult)
-                        }catch (e: Exception){
-                            Log.e(TAG, e.message!!)
+                        .addOnSuccessListener {
+                            Log.d(TAG, "SUCCESS!")
+                            Log.d(TAG, it.itemsFound.toString())
+                            try {
+                                binding.captureResult.setImageBitmap(it.bitmapResult)
+                            } catch (e: Exception) {
+                                Log.e(TAG, e.message!!)
+                            }
                         }
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e(TAG, "ERROR")
-                    }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "ERROR")
+                        }
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Log.e("Error Image Selecting", "이미지 선택 및 편집 오류")
             }
@@ -239,12 +253,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadImage() {
         CropImage.activity()
-            .setGuidelines(CropImageView.Guidelines.ON)
-            .setActivityTitle("이미지 추가")
-            .setCropShape(CropImageView.CropShape.RECTANGLE)
-            .setCropMenuCropButtonTitle("완료")
-            .setRequestedSize(272, 480)
-            .start(this)
+                .setGuidelines(CropImageView.Guidelines.ON)
+                .setActivityTitle("이미지 추가")
+                .setCropShape(CropImageView.CropShape.RECTANGLE)
+                .setCropMenuCropButtonTitle("완료")
+                .setRequestedSize(272, 480)
+                .start(this)
     }
 
     /**
@@ -269,15 +283,15 @@ class MainActivity : AppCompatActivity() {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             // 카메라 프리뷰 (XML 에서 만들었던 PreviewView 사용)
             val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
+                    .build()
+                    .also {
+                        it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+                    }
 
             imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                .setTargetRotation(Surface.ROTATION_180)
-                .build()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setTargetRotation(Surface.ROTATION_180)
+                    .build()
 
             // 후면 카메라 기본값으로 사용
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -288,7 +302,7 @@ class MainActivity : AppCompatActivity() {
 
                 // CameraProvider bind() -> CameraSelector, Preview 객체 넘김
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
+                        this, cameraSelector, preview, imageCapture
                 )
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
@@ -298,12 +312,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val startForResult =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val intent = result.data
-                viewModel.onClickConnect()
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val intent = result.data
+                    viewModel.onClickConnect()
+                }
             }
-        }
 
     private fun initObserving() {
         // Loading Progress
@@ -359,20 +373,42 @@ class MainActivity : AppCompatActivity() {
 
         // 아두이노 (지팡이) 낙상 감지 이벤트
         viewModel.isFallDetected.observe(this, {
-            if (it == true){
+            if (it == true) {
                 viewModel.doCountDownJob()
                 viewModel.isFallDetectedFlag.set(true)
             }
         })
-
-        // Repository 의 LocationManager 초기화를 위한 Context 전달
-        viewModel.initLocationManager(context = this)
-        viewModel.currentAddress.observe(this, {
-            viewModel.currentAddressText.set(it)
-            Timber.d("FXXK ADDRESS ${it}")
-            Timber.d("FXXK ADDRESS ${viewModel.currentAddressText.get()}")
-        })
     }
+
+
+    /**
+     * 서버에서 응답받은 ImageSegmentation 결과를 해석하는 메소드
+     * - 왼쪽, 정면, 오른쪽 각각에 어떤 레이블이 존재하는지에 대해 정리
+     * - 이후, 정리된 결과값을 통해 TTS 호출 동작 구현
+     */
+    private fun interpretImageSegmentationResult(data: List<DetectedObject>) {
+        val result: List<DetectedObject> = data
+        var message = "전방에 "
+
+        val labelNameMap = mapOf(CAUTION_ZONE to "주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도")
+
+        // 정면에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
+        result.forEach {
+            if (it.direction == FRONT) {
+                message += if (it == result.last()) {
+                    when (labelNameMap[it.label]) {
+                        CAUTION_ZONE -> "${labelNameMap[it.label]}이"
+                        else -> "${labelNameMap[it.label]}가"
+                    }
+                } else {
+                    "${labelNameMap[it.label]}, 그리고"
+                }
+            }
+        }
+        message += "있습니다. 주의하세요."
+        textToSpeech(message)
+    }
+
 
     /**
      * Permissions Array 에 있는 권한들을 갖고 있는지 검사
@@ -380,7 +416,7 @@ class MainActivity : AppCompatActivity() {
     private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
         for (permission in permissions) {
             if (context?.let { ActivityCompat.checkSelfPermission(it, permission) }
-                != PackageManager.PERMISSION_GRANTED
+                    != PackageManager.PERMISSION_GRANTED
             ) {
                 return false
             }
@@ -392,16 +428,15 @@ class MainActivity : AppCompatActivity() {
      * Permission 검사
      */
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String?>,
-        grantResults: IntArray
+            requestCode: Int,
+            permissions: Array<String?>,
+            grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             REQUEST_ALL_PERMISSION -> {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
                     Toast.makeText(this, "Permissions granted!", Toast.LENGTH_SHORT).show()
                 } else {
                     requestPermissions(permissions, REQUEST_ALL_PERMISSION)
@@ -435,5 +470,6 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "SmartCane-MainActivity"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val REQUEST_CODE_PERMISSIONS = 10
+
     }
 }

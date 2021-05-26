@@ -59,7 +59,7 @@
             <TextView
                 android:textSize="18sp"
                 android:text="@{viewModel.currentAddressText}"
-                android:textColor="#2196F3"
+                android:textColor="#155F9A"
                 android:layout_marginVertical="16dp"
                 android:layout_gravity="center"
                 android:layout_width="wrap_content"
@@ -111,7 +111,6 @@
                     android:text="완전 왼쪽"
                     android:textColor="@color/white"
                     android:textStyle="bold" />
-
 
                 <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_send5"
