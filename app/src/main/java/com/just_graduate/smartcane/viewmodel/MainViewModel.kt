@@ -48,8 +48,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = _segmentationResult
 
     // 낙상 감지 관련
-    val isFallDetectedFlag = ObservableBoolean(false)
-    val isFallDetected: LiveData<Boolean>
+    val isFallDetected: MutableLiveData<Boolean>
         get() = repository.isFallDetected
 
     private lateinit var countDownJob: Job
@@ -58,8 +57,6 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     // 사용자 현재 위치 관련
     val currentAddress: MutableLiveData<String>
         get() = repository.currentAddress
-    val currentAddressText: ObservableField<String> = ObservableField("")
-
 
     fun setInProgress(en: Boolean) {
         repository.inProgress.value = Event(en)
@@ -163,7 +160,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     private fun cancelCountDownJob() {
         if (countDownJob.isActive || countDownJob.isCompleted) {
             count.value = 20
-            isFallDetectedFlag.set(false)
+            isFallDetected.value = false
             countDownJob.cancel()
         }
     }

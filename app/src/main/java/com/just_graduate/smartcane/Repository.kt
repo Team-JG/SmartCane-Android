@@ -69,10 +69,8 @@ class Repository : RetrofitService {
      */
     private val locationListener =
         LocationListener {
-            Timber.d("Location : ${it.longitude}")
             it.let {
                 val position = LatLng(it.latitude, it.longitude)
-                Timber.d("LATITUDE : ${position.latitude} and LONGITUDE : ${position.longitude}")
                 getAddress(position)
             }
         }
@@ -82,7 +80,6 @@ class Repository : RetrofitService {
         val address = geoCoder.getFromLocation(position.latitude, position.longitude, 1).first()
             .getAddressLine(0)
         currentAddress.value = address
-        Timber.d("ADDRESS : ${address}")
         Timber.d("ADDRESS : ${currentAddress.value}")
     }
 

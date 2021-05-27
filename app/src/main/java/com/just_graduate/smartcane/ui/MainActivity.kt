@@ -72,6 +72,8 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.viewModel = viewModel
+        binding.lifecycleOwner = this
+
         if (!hasPermissions(this, PERMISSIONS)) {
             requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
         }
@@ -375,9 +377,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.isFallDetected.observe(this, {
             if (it == true) {
                 viewModel.doCountDownJob()
-                viewModel.isFallDetectedFlag.set(true)
             }
         })
+
+        viewModel.initLocationManager(context = this)
     }
 
 
@@ -395,7 +398,9 @@ class MainActivity : AppCompatActivity() {
         // 정면에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
         result.forEach {
             if (it.direction == FRONT) {
+                // 리스트의 마지막 객체라면 '그리고' 를 빼고, '이(가)'로 문장 마무리
                 message += if (it == result.last()) {
+                    // 적절한 주격조사를 붙이기 위해 '주의 구역'만
                     when (labelNameMap[it.label]) {
                         CAUTION_ZONE -> "${labelNameMap[it.label]}이"
                         else -> "${labelNameMap[it.label]}가"
