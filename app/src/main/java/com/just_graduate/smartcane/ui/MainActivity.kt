@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaParser
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -28,12 +29,11 @@ import com.bumptech.glide.Glide
 import com.just_graduate.smartcane.Constants.CAUTION_ZONE
 import com.just_graduate.smartcane.Constants.CROSS_WALK
 import com.just_graduate.smartcane.Constants.FRONT
-import com.just_graduate.smartcane.Constants.LEFT
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
-import com.just_graduate.smartcane.Constants.RIGHT
 import com.just_graduate.smartcane.Constants.ROAD_WAY
 import com.just_graduate.smartcane.data.DetectedObject
+import com.just_graduate.smartcane.data.SegmentationResponse
 import com.just_graduate.smartcane.tflite.ImageClassifier
 import com.just_graduate.smartcane.util.*
 import com.just_graduate.smartcane.util.Util.showToast
@@ -41,8 +41,10 @@ import com.just_graduate.smartcane.util.Util.textToSpeech
 import com.just_graduate.smartcane.viewmodel.MainViewModel
 import com.theartofdev.edmodo.cropper.CropImage
 import com.theartofdev.edmodo.cropper.CropImageView
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import timber.log.Timber
@@ -50,7 +52,6 @@ import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
-import java.util.stream.IntStream.range
 
 
 class MainActivity : AppCompatActivity() {
@@ -132,10 +133,10 @@ class MainActivity : AppCompatActivity() {
                      * 촬영한 이미지를 통해 딥 러닝 서버 API 를 호출하여, 결과를 핸들링함
                      * - ImageProxy => Bitmap => File => MultipartBody.Part => API 호출 동작 수행
                      * - API 호출이 완료되면, segmentationResult 라는 LiveData 에 API 호출 결과 담김
-                     * - TODO : 호출 결과를 통해 TTS 안내 등 동작 정의 필요
                      */
 
                     override fun onCaptureSuccess(image: ImageProxy) {
+                        // MultipartBody 로 만들어주기 위해 File 객체로 변환
                         val bitmap = imageProxyToBitmap(image)
 
                         showToast("Capture Succeeded: $image")
@@ -155,18 +156,11 @@ class MainActivity : AppCompatActivity() {
 //                                }
 //                        super.onCaptureSuccess(image)
 
+
                         val body: MultipartBody.Part = buildImageBodyPart(bitmap)
-
                         viewModel.getSegmentationResult(body)
-                        viewModel.segmentationResult.observe(
-                                this@MainActivity,
-                                {
-                                    interpretImageSegmentationResult(it)
 
-                                    // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
-                                    //  아직 Object 형태 정해진 거 없음
-                                }
-                        )
+
                     }
                 }
         )
@@ -179,9 +173,9 @@ class MainActivity : AppCompatActivity() {
      * - Bimap => File => MultipartBody.Part 변환 동작 수행
      */
     private fun buildImageBodyPart(bitmap: Bitmap): MultipartBody.Part {
-        val leftImageFile = convertBitmapToFile(bitmap)
-        val reqFile = leftImageFile.asRequestBody("image/*".toMediaTypeOrNull())
-        return MultipartBody.Part.createFormData("ROAD_IMAGE", leftImageFile.name, reqFile)
+        val imageFile = convertBitmapToFile(bitmap)
+        val reqFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+        return MultipartBody.Part.createFormData("file", imageFile.name, reqFile)
     }
 
     /**
@@ -190,7 +184,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun convertBitmapToFile(bitmap: Bitmap): File {
         //create a file to write bitmap data
-        val file = File(this.cacheDir, "ROAD_IMAGE")
+        val file = File(this.cacheDir, "road_image.jpeg")
         file.createNewFile()
 
         val bos = ByteArrayOutputStream()
@@ -234,19 +228,34 @@ class MainActivity : AppCompatActivity() {
                         .centerCrop()
                         .into(binding.captureResult)
 
-                imageClassifier.classifyAsync(bitmap)
-                        .addOnSuccessListener {
-                            Log.d(TAG, "SUCCESS!")
-                            Log.d(TAG, it.itemsFound.toString())
-                            try {
-                                binding.captureResult.setImageBitmap(it.bitmapResult)
-                            } catch (e: Exception) {
-                                Log.e(TAG, e.message!!)
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e(TAG, "ERROR")
-                        }
+//                imageClassifier.classifyAsync(bitmap)
+//                        .addOnSuccessListener {
+//                            Log.d(TAG, "SUCCESS!")
+//                            Log.d(TAG, it.itemsFound.toString())
+//                            try {
+//                                binding.captureResult.setImageBitmap(it.bitmapResult)
+//                            } catch (e: Exception) {
+//                                Log.e(TAG, e.message!!)
+//                            }
+//                        }
+//                        .addOnFailureListener { e ->
+//                            Log.e(TAG, "ERROR")
+//                        }
+
+                val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+                viewModel.getSegmentationResult(body)
+
+//                viewModel.segmentationResult.observe(
+//                        this@MainActivity,
+//                        {
+//                            interpretImageSegmentationResult(it)
+//
+//                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
+//                            //  아직 Object 형태 정해진 거 없음
+//                        }
+//                )
+
+
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Log.e("Error Image Selecting", "이미지 선택 및 편집 오류")
             }
@@ -373,6 +382,14 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // SegmentationResult 를 담는 LiveData 옵저빙 -> 값 바뀔 때마다 해석 실행
+        viewModel.segmentationResult.observe(
+                this@MainActivity,
+                {
+                    interpretImageSegmentationResult(it)
+                }
+        )
+
         // 아두이노 (지팡이) 낙상 감지 이벤트
         viewModel.isFallDetected.observe(this, {
             if (it == true) {
@@ -389,13 +406,13 @@ class MainActivity : AppCompatActivity() {
      * - 왼쪽, 정면, 오른쪽 각각에 어떤 레이블이 존재하는지에 대해 정리
      * - 이후, 정리된 결과값을 통해 TTS 호출 동작 구현
      */
-    private fun interpretImageSegmentationResult(data: List<DetectedObject>) {
-        val result: List<DetectedObject> = data
+    private fun interpretImageSegmentationResult(data: SegmentationResponse) {
+        val result: List<DetectedObject> = data.result
         var message = "전방에 "
 
         val labelNameMap = mapOf(CAUTION_ZONE to "주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도")
 
-        // 정면에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
+        // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
         result.forEach {
             if (it.direction == FRONT) {
                 // 리스트의 마지막 객체라면 '그리고' 를 빼고, '이(가)'로 문장 마무리
@@ -411,6 +428,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
         message += "있습니다. 주의하세요."
+        Timber.d(message)
+
+        // Text-To-Speech 로 만들어진 메세지 재생
         textToSpeech(message)
     }
 

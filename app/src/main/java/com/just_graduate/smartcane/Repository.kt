@@ -111,8 +111,8 @@ class Repository : RetrofitService {
     /**
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
-    override fun getImageSegmentationResult(image: MultipartBody.Part) =
-        retrofitService.getImageSegmentationResult(image = image)
+    override suspend fun getImageSegmentationResult(file: MultipartBody.Part) =
+        retrofitService.getImageSegmentationResult(file = file)
 
     /**
      * 블루투스 지원 여부

@@ -1,6 +1,6 @@
 package com.just_graduate.smartcane.network
 
-import com.just_graduate.smartcane.data.DetectedObject
+import com.just_graduate.smartcane.data.SegmentationResponse
 import okhttp3.MultipartBody
 import retrofit2.http.*
 
@@ -10,9 +10,9 @@ interface RetrofitService {
      * 실시간 촬영 이미지에 대한 해석 결과 값을 요청함
      */
     @Multipart
-    @GET("/segmentation/")
-    fun getImageSegmentationResult(
-        @Part image: MultipartBody.Part,
-    ): List<DetectedObject>
+    @POST("/api/direct/")
+    suspend fun getImageSegmentationResult(
+            @Part file: MultipartBody.Part,
+    ): SegmentationResponse
 
 }

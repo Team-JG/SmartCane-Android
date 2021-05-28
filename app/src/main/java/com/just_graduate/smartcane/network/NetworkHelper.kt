@@ -9,13 +9,17 @@ import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 
 import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 
 object NetworkHelper {
-    private const val serverBaseUrl = "http://localhost"
+    private const val serverBaseUrl = "http://3c2091a29d91.ngrok.io/"
 
     var token: String = ""
 
     private val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(1, TimeUnit.MINUTES)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.NONE
             })
@@ -44,7 +48,6 @@ object NetworkHelper {
             .baseUrl(serverBaseUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
-            .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
             .build()
 
     val retrofitService: RetrofitService = retrofit.create(RetrofitService::class.java)

@@ -13,7 +13,9 @@ object Constants {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_PHONE_STATE
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE
     )
 
     val DEVICE_NAME = "SmartCane"
@@ -23,6 +25,6 @@ object Constants {
     const val RIGHT = "right"
 
     const val CAUTION_ZONE = "caution"
-    const val CROSS_WALK = "crosswalk"
-    const val ROAD_WAY = "roadway"
+    const val CROSS_WALK = "cross-walk"
+    const val ROAD_WAY = "road-way"
 }

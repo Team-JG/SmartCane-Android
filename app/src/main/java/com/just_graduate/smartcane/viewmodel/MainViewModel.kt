@@ -6,7 +6,7 @@ import androidx.databinding.ObservableField
 import androidx.lifecycle.*
 import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.Repository
-import com.just_graduate.smartcane.data.DetectedObject
+import com.just_graduate.smartcane.data.SegmentationResponse
 import com.just_graduate.smartcane.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.catch
@@ -43,8 +43,8 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = repository.putTxt
 
     // 딥 러닝 API 호출 결과 받을 시 변화하는 LiveData
-    private val _segmentationResult = MutableLiveData<List<DetectedObject>>()
-    val segmentationResult: LiveData<List<DetectedObject>>
+    private val _segmentationResult = MutableLiveData<SegmentationResponse>()
+    val segmentationResult: LiveData<SegmentationResponse>
         get() = _segmentationResult
 
     // 낙상 감지 관련
@@ -113,7 +113,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
      * - Coroutines Flow 를 활용한 비동기 스트림
      */
     fun getSegmentationResult(image: MultipartBody.Part) {
-        val data = flow { emit(repository.getImageSegmentationResult(image = image)) }
+        val data = flow { emit(repository.getImageSegmentationResult(file = image)) }
         viewModelScope.launch {
             data.catch { Timber.i(it) }
                     .flowOn(Dispatchers.IO)
