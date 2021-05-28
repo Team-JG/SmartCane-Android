@@ -60,7 +60,7 @@ class Repository : RetrofitService {
     val currentAddress: MutableLiveData<String> = MutableLiveData("")
 
     companion object {
-        const val MIN_TIME_MS = 5000L
+        const val MIN_TIME_MS = 10000L
         const val MIN_DISTANCE_METER = 1f
     }
 

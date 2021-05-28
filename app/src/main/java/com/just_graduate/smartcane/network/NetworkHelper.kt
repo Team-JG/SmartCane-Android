@@ -12,7 +12,7 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 object NetworkHelper {
-    private const val serverBaseUrl = "http://3c2091a29d91.ngrok.io/"
+    private const val serverBaseUrl = "http://4830b5e38ce9.ngrok.io"
 
     var token: String = ""
 

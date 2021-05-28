@@ -52,6 +52,7 @@ import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
+import kotlin.random.Random
 
 
 class MainActivity : AppCompatActivity() {
@@ -139,6 +140,13 @@ class MainActivity : AppCompatActivity() {
                         // MultipartBody 로 만들어주기 위해 File 객체로 변환
                         val bitmap = imageProxyToBitmap(image)
 
+                        Glide
+                                .with(this@MainActivity)
+                                .load(bitmap)
+                                .centerCrop()
+                                .into(binding.captureResult)
+
+
                         showToast("Capture Succeeded: $image")
 
 //                    binding.captureResult.setImageBitmap(bitmap)
@@ -160,7 +168,7 @@ class MainActivity : AppCompatActivity() {
                         val body: MultipartBody.Part = buildImageBodyPart(bitmap)
                         viewModel.getSegmentationResult(body)
 
-
+                        image.close()
                     }
                 }
         )
@@ -170,7 +178,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * Retrofit 을 통해 이미지 POST API 구현을 하기 위해서는,
      * MultipartBody.Part 형태로 데이터를 넣어야 한다.
-     * - Bimap => File => MultipartBody.Part 변환 동작 수행
+     * - Bitmap => File => MultipartBody.Part 변환 동작 수행
      */
     private fun buildImageBodyPart(bitmap: Bitmap): MultipartBody.Part {
         val imageFile = convertBitmapToFile(bitmap)
@@ -183,8 +191,9 @@ class MainActivity : AppCompatActivity() {
      * - Bitmap => File 변환 동작 수행
      */
     private fun convertBitmapToFile(bitmap: Bitmap): File {
+        val randomNumber = Random.nextInt(0, 1000000000).toString()
         //create a file to write bitmap data
-        val file = File(this.cacheDir, "road_image.jpeg")
+        val file = File(this.cacheDir, "road_${randomNumber}.jpeg")
         file.createNewFile()
 
         val bos = ByteArrayOutputStream()
@@ -244,17 +253,6 @@ class MainActivity : AppCompatActivity() {
 
                 val body: MultipartBody.Part = buildImageBodyPart(bitmap)
                 viewModel.getSegmentationResult(body)
-
-//                viewModel.segmentationResult.observe(
-//                        this@MainActivity,
-//                        {
-//                            interpretImageSegmentationResult(it)
-//
-//                            // TODO : SegmentationResult 왔을 때 어떤 동작을 할지 정의 (TTS 기반)
-//                            //  아직 Object 형태 정해진 거 없음
-//                        }
-//                )
-
 
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Log.e("Error Image Selecting", "이미지 선택 및 편집 오류")
@@ -413,20 +411,21 @@ class MainActivity : AppCompatActivity() {
         val labelNameMap = mapOf(CAUTION_ZONE to "주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도")
 
         // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
-        result.forEach {
-            if (it.direction == FRONT) {
-                // 리스트의 마지막 객체라면 '그리고' 를 빼고, '이(가)'로 문장 마무리
-                message += if (it == result.last()) {
+        result.forEachIndexed { index, it ->
+            if (index == result.size - 1) {
+                message += if (it === result[result.size - 1]) {
                     // 적절한 주격조사를 붙이기 위해 '주의 구역'만
-                    when (labelNameMap[it.label]) {
-                        CAUTION_ZONE -> "${labelNameMap[it.label]}이"
-                        else -> "${labelNameMap[it.label]}가"
+                    if (it.label == CAUTION_ZONE) {
+                        "${labelNameMap[it.label]}이 "
+                    } else {
+                        "${labelNameMap[it.label]}가 "
                     }
                 } else {
                     "${labelNameMap[it.label]}, 그리고"
                 }
             }
         }
+
         message += "있습니다. 주의하세요."
         Timber.d(message)
 
