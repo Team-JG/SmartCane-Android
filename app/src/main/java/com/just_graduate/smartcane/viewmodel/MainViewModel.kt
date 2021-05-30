@@ -108,7 +108,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     }
 
     /**
-     * Data Binding 을 통해 파라미터에 EditText 값이 담김
+     * Arduino 에 블루투스를 통해 데이터 전송
      */
     fun onClickSendData(command: Int) {
         val commandString = command.toString()

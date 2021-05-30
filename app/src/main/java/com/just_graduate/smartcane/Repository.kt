@@ -405,6 +405,7 @@ class Repository : RetrofitService {
     fun sendSMS() {
         val addressText = currentAddress.value
         val smsText = "$addressText -> 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
+        Timber.d(smsText)
         val smsManager = SmsManager.getDefault()
         smsManager.sendTextMessage("01023813473", null, smsText, null, null)
     }

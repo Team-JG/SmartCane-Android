@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
         <import type="android.view.View" />
@@ -17,152 +18,99 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:orientation="vertical">
+            android:orientation="horizontal">
 
             <androidx.camera.view.PreviewView
                 android:id="@+id/viewFinder"
-                android:layout_width="match_parent"
-                android:layout_height="300dp"/>
-
-
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/btn_connect"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginStart="10dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginEnd="10dp"
-                android:background="#787878"
-                android:onClick="@{()->viewModel.onClickConnect()}"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="@{viewModel.btnConnected?@string/disconnect:@string/connect}"
-                android:textColor="@color/white"
-                android:textStyle="bold" />
-
-            <TextView
-                android:textSize="18sp"
-                android:text="@{viewModel.currentAddress}"
-                android:textColor="#155F9A"
-                android:layout_marginVertical="16dp"
-                android:layout_gravity="center"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"/>
 
             <LinearLayout
-                android:gravity="center"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" >
+                android:background="#E2E6ED"
+                android:layout_width="1dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_height="match_parent">
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:layout_gravity="center"
-                    android:id="@+id/camera_capture_button"
-                    android:layout_width="100dp"
-                    android:text="TAKE PHOTO"
-                    android:layout_marginEnd="8dp"
-                    android:layout_height="60dp"/>
+                <androidx.cardview.widget.CardView
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    app:cardCornerRadius="16dp"
+                    android:layout_margin="16dp">
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:layout_gravity="center"
-                    android:id="@+id/loadImageButton"
-                    android:layout_width="100dp"
-                    android:text="LOAD IMAGE"
-                    android:layout_height="60dp"/>
+                    <LinearLayout
+                        android:padding="16dp"
+                        android:gravity="center_vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btn_connect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:background="#787878"
+                        android:onClick="@{()->viewModel.onClickConnect()}"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:text="@{viewModel.btnConnected?@string/disconnect:@string/connect}"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:text="@{viewModel.currentAddress}"
+                        android:textColor="#3C3C3C"
+                        android:layout_marginVertical="16dp"
+                        android:layout_gravity="center"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+
+
+                    <LinearLayout
+                        android:gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" >
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:layout_gravity="center"
+                            android:id="@+id/camera_capture_button"
+                            android:layout_width="100dp"
+                            android:text="TAKE PHOTO"
+                            android:layout_marginEnd="8dp"
+                            android:layout_height="60dp"/>
+
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:layout_gravity="center"
+                            android:id="@+id/loadImageButton"
+                            android:layout_width="100dp"
+                            android:text="LOAD IMAGE"
+                            android:layout_height="60dp"/>
+
+                    </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <ImageView
+                    android:id="@+id/captureResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="240dp"/>
 
             </LinearLayout>
 
 
-            <ImageView
-                android:id="@+id/captureResult"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_send1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
-                    android:background="#1E6CBA"
-                    android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(1)}"
-                    android:text="완전 왼쪽"
-                    android:textColor="@color/white"
-                    android:textStyle="bold" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_send5"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
-                    android:background="#1E6CBA"
-                    android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(5)}"
-                    android:text="완전 오른쪽"
-                    android:textColor="@color/white"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_send2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
-                    android:background="#1E6CBA"
-                    android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(2)}"
-                    android:text="왼쪽"
-                    android:textColor="@color/white"
-                    android:textStyle="bold" />
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_send3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
-                    android:background="#1E6CBA"
-                    android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(3)}"
-                    android:text="직진"
-                    android:textColor="@color/white"
-                    android:textStyle="bold" />
-
-
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_send4"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="10dp"
-                    android:layout_weight="1"
-                    android:background="#1E6CBA"
-                    android:enabled="@{viewModel.btnConnected?true:false}"
-                    android:onClick="@{()->viewModel.onClickSendData(4)}"
-                    android:text="오른쪽"
-                    android:textColor="@color/white"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

@@ -12,11 +12,13 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.media.MediaParser
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -73,6 +75,15 @@ class MainActivity : AppCompatActivity() {
         // Camera X 인스턴스 초기화
         startCamera()
 
+        /**
+         * 전체 화면으로 앱 실행
+         */
+        this.window?.apply {
+            this.statusBarColor = Color.TRANSPARENT
+            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
+
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.viewModel = viewModel
         binding.lifecycleOwner = this
@@ -124,7 +135,6 @@ class MainActivity : AppCompatActivity() {
                      * - ImageProxy => Bitmap => File => MultipartBody.Part => API 호출 동작 수행
                      * - API 호출이 완료되면, segmentationResult 라는 LiveData 에 API 호출 결과 담김
                      */
-
                     override fun onCaptureSuccess(image: ImageProxy) {
                         // MultipartBody 로 만들어주기 위해 File 객체로 변환
                         val bitmap = imageProxyToBitmap(image)
@@ -137,7 +147,9 @@ class MainActivity : AppCompatActivity() {
 
                         showToast("Capture Succeeded: $image")
 
-                        binding.captureResult.setImageBitmap(bitmap)
+                        Glide.with(this@MainActivity)
+                                .load(bitmap)
+                                .into(binding.captureResult)
 
 //                     TF Lite 모델에 이미지 입력
 //                        imageClassifier.classifyAsync(bitmap)
@@ -153,7 +165,6 @@ class MainActivity : AppCompatActivity() {
 //                        super.onCaptureSuccess(image)
 
                         val body: MultipartBody.Part = buildImageBodyPart(bitmap)
-
                         // Semantic Segmentation API 호출
                         viewModel.getSegmentationResult(body)
 
@@ -466,6 +477,8 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.unregisterReceiver()
+
+//        cameraExecutor.shutdown()
     }
 
     override fun onBackPressed() {
@@ -475,7 +488,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        cameraExecutor.shutdown()
     }
 
     companion object {

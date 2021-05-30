@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">SmartCane</string>
-    <string name="connect">연결</string>
-    <string name="disconnect">연결 해제</string>
+    <string name="connect">지팡이 연결</string>
+    <string name="disconnect">지팡이 연결 해제</string>
     <string name="success_connect_cane">지팡이와 연결되었습니다.</string>
     <string name="disconnect_connect_cane">지팡이와 연결이 해제되었습니다.</string>
     <string name="try_connect_cane">발견한 지팡이를 연결합니다.</string>
