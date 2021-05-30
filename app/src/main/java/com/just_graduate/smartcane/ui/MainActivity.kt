@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
 
         // View Component 들이 ViewModel Observing 시작
         initObserving()
+        // Camera X 인스턴스 초기화
         startCamera()
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
@@ -89,30 +90,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         /**
-         * 사진 촬영 후 Interpreter 실행
-         * TODO : 딥 러닝 API 호출로 동작 변경
+         * 사진 촬영 후 Semantic Segmentation API 호출
          */
         binding.cameraCaptureButton.setOnClickListener {
             takePhoto()
         }
 
         /**
-         * 임의 이미지 입력 후 Interpreter 실행
-         * TODO : 딥 러닝 API 호출로 동작 변경
+         * 임의 이미지 입력 후 Semantic Segmentation API 호출
          */
         binding.loadImageButton.setOnClickListener {
             loadImage()
         }
-
-//        try{
-//            val smsText = "순천향로 8-1 => 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
-//            val smsManager = SmsManager.getDefault()
-//            smsManager.sendTextMessage("01023813473", null, smsText, null, null)
-//            Timber.d("SEND MESSAGE!")
-//        } catch (e: Exception){
-//            Timber.i(e)
-//        }
-
     }
 
     // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함, 현재 1회 추론에 약 7초로 매우 느림)
@@ -146,10 +135,9 @@ class MainActivity : AppCompatActivity() {
                                 .centerCrop()
                                 .into(binding.captureResult)
 
-
                         showToast("Capture Succeeded: $image")
 
-//                    binding.captureResult.setImageBitmap(bitmap)
+                        binding.captureResult.setImageBitmap(bitmap)
 
 //                     TF Lite 모델에 이미지 입력
 //                        imageClassifier.classifyAsync(bitmap)
@@ -164,8 +152,9 @@ class MainActivity : AppCompatActivity() {
 //                                }
 //                        super.onCaptureSuccess(image)
 
-
                         val body: MultipartBody.Part = buildImageBodyPart(bitmap)
+
+                        // Semantic Segmentation API 호출
                         viewModel.getSegmentationResult(body)
 
                         image.close()
@@ -213,6 +202,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: IOException) {
             e.printStackTrace()
         }
+        bitmap.recycle()
         return file
     }
 
@@ -226,10 +216,7 @@ class MainActivity : AppCompatActivity() {
 
             if (resultCode == Activity.RESULT_OK) {
                 val resultUri = result.uri
-                val bitmap =
-//                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, resultUri))
-
-                        MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
+                val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
 
                 Glide
                         .with(this)
@@ -372,14 +359,6 @@ class MainActivity : AppCompatActivity() {
             viewModel.setInProgress(false)
         })
 
-        // 아두이노로부터 수신받은 블루투스 데이터
-        viewModel.putTxt.observe(this, {
-            if (it != null) {
-                recv += it
-                viewModel.txtRead.set(recv)
-            }
-        })
-
         // SegmentationResult 를 담는 LiveData 옵저빙 -> 값 바뀔 때마다 해석 실행
         viewModel.segmentationResult.observe(
                 this@MainActivity,
@@ -391,7 +370,9 @@ class MainActivity : AppCompatActivity() {
         // 아두이노 (지팡이) 낙상 감지 이벤트
         viewModel.isFallDetected.observe(this, {
             if (it == true) {
-                viewModel.doCountDownJob()
+                viewModel.startCountDown()
+            } else{
+                viewModel.cancelCountDown()
             }
         })
 
@@ -400,16 +381,23 @@ class MainActivity : AppCompatActivity() {
 
 
     /**
-     * 서버에서 응답받은 ImageSegmentation 결과를 해석하는 메소드
+     * 서버에서 응답받은 Image Semantic Segmentation 결과를 해석하는 메소드
      * - 왼쪽, 정면, 오른쪽 각각에 어떤 레이블이 존재하는지에 대해 정리
      * - 이후, 정리된 결과값을 통해 TTS 호출 동작 구현
      */
     private fun interpretImageSegmentationResult(data: SegmentationResponse) {
         val result: List<DetectedObject> = data.result
+        if (result.isEmpty()) {
+            Timber.d("감지된 객체 없음")
+            return
+        }
+
+        result.forEach {
+            Timber.d("direction : ${it.direction}, object : ${it.label}")
+        }
+
         var message = "전방에 "
-
-        val labelNameMap = mapOf(CAUTION_ZONE to "주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도")
-
+        val labelNameMap = mapOf(CAUTION_ZONE to "가로수, 맨홀 뚜껑 등의 주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "골목길 혹은 차도")
         // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
         result.forEachIndexed { index, it ->
             if (index == result.size - 1) {
@@ -428,9 +416,7 @@ class MainActivity : AppCompatActivity() {
 
         message += "있습니다. 주의하세요."
         Timber.d(message)
-
-        // Text-To-Speech 로 만들어진 메세지 재생
-        textToSpeech(message)
+        textToSpeech(message)  // Text-To-Speech 로 만들어진 메세지 재생
     }
 
 
@@ -472,7 +458,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.txtRead.set("Here you can see the message come")
     }
 
     override fun onPause() {

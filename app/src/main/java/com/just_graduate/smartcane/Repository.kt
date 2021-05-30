@@ -400,12 +400,10 @@ class Repository : RetrofitService {
      * 긴급 SOS 호출을 하는 메세지 전송을 위한 메소드
      * - 낙상 지 20초 카운트 다운이 끝났을 때 발동
      */
-    private fun sendSMS(){
+    fun sendSMS(){
         val addressText = currentAddress.value
         val smsText = "${addressText} -> 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
         val smsManager = SmsManager.getDefault()
         smsManager.sendTextMessage("01023813473", null, smsText, null, null)
     }
-
-
 }

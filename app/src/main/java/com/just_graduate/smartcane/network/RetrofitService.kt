@@ -10,7 +10,7 @@ interface RetrofitService {
      * 실시간 촬영 이미지에 대한 해석 결과 값을 요청함
      */
     @Multipart
-    @POST("/api/direct/")
+    @POST("/api/segmentation/")
     suspend fun getImageSegmentationResult(
             @Part file: MultipartBody.Part,
     ): SegmentationResponse

@@ -1,6 +1,7 @@
 package com.just_graduate.smartcane.viewmodel
 
 import android.content.Context
+import android.os.CountDownTimer
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
 import androidx.lifecycle.*
@@ -37,26 +38,32 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
     val connectError: LiveData<Event<Boolean>>
         get() = repository.connectError
 
-    val txtRead: ObservableField<String> = ObservableField("")
-
-    val putTxt: LiveData<String>
-        get() = repository.putTxt
-
     // 딥 러닝 API 호출 결과 받을 시 변화하는 LiveData
     private val _segmentationResult = MutableLiveData<SegmentationResponse>()
     val segmentationResult: LiveData<SegmentationResponse>
         get() = _segmentationResult
 
+    // 사용자 현재 위치 관련
+    val currentAddress: MutableLiveData<String>
+        get() = repository.currentAddress
+
+
     // 낙상 감지 관련
     val isFallDetected: MutableLiveData<Boolean>
         get() = repository.isFallDetected
 
-    private lateinit var countDownJob: Job
-    val count: MutableLiveData<Int> = MutableLiveData(20)
+    // 낙상 감지 시 20초 카운트 다운 실행 (만약 카운트다운이 완료되면, SOS 호출)
+    val countDown: CountDownTimer = object : CountDownTimer(20000, 1000){
+        override fun onTick(millisUntilFinished: Long) {
+            Timber.d(millisUntilFinished.toString())
+        }
 
-    // 사용자 현재 위치 관련
-    val currentAddress: MutableLiveData<String>
-        get() = repository.currentAddress
+        // 119로 SMS 전송 (긴급 상황)
+        override fun onFinish() {
+            repository.sendSMS()
+            isFallDetected.value = false
+        }
+    }
 
     fun setInProgress(en: Boolean) {
         repository.inProgress.value = Event(en)
@@ -123,45 +130,19 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         }
     }
 
-    private fun initCountDownJob() {
-        countDownJob = Job()
-    }
-
-    fun doCountDownJob() {
-        initCountDownJob()
-        val coroutineName = countDownJob.toString().split("{")
-        val coroutineStatus = coroutineName[1].substring(0, 6)
-        if (coroutineStatus == "Active") {
-            cancelCountDownJob()
-        } else {
-            viewModelScope.launch(countDownJob) {
-                decreaseCount()  // 카운트 다운 시작
-            }
-        }
-    }
-
     /**
-     * Coroutines 로 20초 카운트 다운
+     * CountDownTimer 로 20초 카운트 다운
      */
-    private suspend fun decreaseCount() {
-        for (i in 20 downTo 1) {
-            count.value = count.value?.minus(1)
-            Timber.d(count.value.toString())
-            delay(1000L)
-        }
-        // 20초 카운트 다운 종료
-        Timber.d("CountDown Cleared!")
+    fun startCountDown() {
+        countDown.start()
     }
 
     /**
      * 만약 지팡이를 다시 쥐었다는 신호를 받으면
-     * CountDownJob 종료 cancel()
+     * CountDownTimer 종료 cancel()
      */
-    private fun cancelCountDownJob() {
-        if (countDownJob.isActive || countDownJob.isCompleted) {
-            count.value = 20
-            isFallDetected.value = false
-            countDownJob.cancel()
-        }
+    fun cancelCountDown(){
+        countDown.cancel()
     }
+
 }
