@@ -48,16 +48,6 @@
 
             <TextView
                 android:textSize="18sp"
-                android:visibility="@{viewModel.isFallDetected?View.VISIBLE:View.GONE}"
-                android:text="@{viewModel.count.toString}"
-                android:textColor="#B30000"
-                android:layout_marginVertical="16dp"
-                android:layout_gravity="center"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <TextView
-                android:textSize="18sp"
                 android:text="@{viewModel.currentAddress}"
                 android:textColor="#155F9A"
                 android:layout_marginVertical="16dp"

@@ -68,17 +68,17 @@ class Repository : RetrofitService {
      * 사용자 위치 (위,경도) 가 바뀔 때 마다 호출되는 onLocationChanged() 리스너
      */
     private val locationListener =
-        LocationListener {
-            it.let {
-                val position = LatLng(it.latitude, it.longitude)
-                getAddress(position)
+            LocationListener {
+                it.let {
+                    val position = LatLng(it.latitude, it.longitude)
+                    getAddress(position)
+                }
             }
-        }
 
     private fun getAddress(position: LatLng) {
         val geoCoder = Geocoder(context, Locale.getDefault())
         val address = geoCoder.getFromLocation(position.latitude, position.longitude, 1).first()
-            .getAddressLine(0)
+                .getAddressLine(0)
         currentAddress.value = address
         Timber.d("ADDRESS : ${currentAddress.value}")
     }
@@ -95,16 +95,16 @@ class Repository : RetrofitService {
         this.context = context
 
         locationManager.requestLocationUpdates(
-            LocationManager.GPS_PROVIDER,
-            MIN_TIME_MS,
-            MIN_DISTANCE_METER,
-            locationListener
+                LocationManager.GPS_PROVIDER,
+                MIN_TIME_MS,
+                MIN_DISTANCE_METER,
+                locationListener
         )
         locationManager.requestLocationUpdates(
-            LocationManager.NETWORK_PROVIDER,
-            MIN_TIME_MS,
-            MIN_DISTANCE_METER,
-            locationListener
+                LocationManager.NETWORK_PROVIDER,
+                MIN_TIME_MS,
+                MIN_DISTANCE_METER,
+                locationListener
         )
     }
 
@@ -112,7 +112,7 @@ class Repository : RetrofitService {
      * 딥 러닝 서버 API (Image Segmentation) 를 호출하기 위한 Retrofit Service 메소드 실행
      */
     override suspend fun getImageSegmentationResult(file: MultipartBody.Part) =
-        retrofitService.getImageSegmentationResult(file = file)
+            retrofitService.getImageSegmentationResult(file = file)
 
     /**
      * 블루투스 지원 여부
@@ -180,7 +180,7 @@ class Repository : RetrofitService {
                     Log.d("Bluetooth action", action)
                 }
                 val device =
-                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 var name: String? = null
                 if (device != null) {
                     name = device.name // Broadcast 를 보낸 기기의 이름을 가져옴
@@ -188,8 +188,8 @@ class Repository : RetrofitService {
                 when (action) {
                     BluetoothAdapter.ACTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
-                            BluetoothAdapter.EXTRA_STATE,
-                            BluetoothAdapter.ERROR
+                                BluetoothAdapter.EXTRA_STATE,
+                                BluetoothAdapter.ERROR
                         )
                         when (state) {
                             BluetoothAdapter.STATE_OFF -> {
@@ -231,8 +231,8 @@ class Repository : RetrofitService {
             }
         }
         BaseApplication.applicationContext().registerReceiver(
-            mBluetoothStateReceiver,
-            stateFilter
+                mBluetoothStateReceiver,
+                stateFilter
         )
     }
 
@@ -332,7 +332,7 @@ class Repository : RetrofitService {
         }
     }
 
-    fun byteArrayToHex(a: ByteArray): String? {
+    fun byteArrayToHex(a: ByteArray): String {
         val sb = StringBuilder()
         for (b in a) sb.append(String.format("%02x ", b /*&0xff*/))
         return sb.toString()
@@ -343,7 +343,7 @@ class Repository : RetrofitService {
      */
     @ExperimentalUnsignedTypes
     fun beginListenForFallDetection() {
-        val mWorkerThread = Thread {
+        val workerThread = Thread {
             while (!Thread.currentThread().isInterrupted) {
                 try {
                     val bytesAvailable = mInputStream?.available()
@@ -352,7 +352,7 @@ class Repository : RetrofitService {
 
                             /**
                              * 한 바이트에 대해서만 처리 (아두이노 단에서 1 바이트씩만 보냄)
-                             * - 01 : 지팡이를 놓친 상황
+                             * - 01 : 지팡이를 놓친 상황에 수신
                              * - 02 : 지팡이를 놓쳤다가 다시 잡은 상황
                              */
                             val packetBytes = ByteArray(bytesAvailable)
@@ -371,7 +371,7 @@ class Repository : RetrofitService {
             }
         }
         // 블루투스 데이터 수신 thread 시작
-        mWorkerThread.start()
+        workerThread.start()
     }
 
     /**
@@ -384,25 +384,27 @@ class Repository : RetrofitService {
         Log.d("inputData", data.toString())
 
         // 지팡이를 놓쳤다는 신호를 받았을 때
-        if (String.format("%02x", data) == "01") {
+        if (String.format("%02x", data) == "01" && isFallDetected.value == false) {
             textToSpeech("지팡이를 놓쳤습니다. 지팡이를 다시 잡지 않으면 20초 후 SOS 호출을 합니다")
-            isFallDetected.value = true
+            isFallDetected.postValue(true)
         }
 
         // 지팡이를 다시 잡았다는 신호를 받았을 때
-        if (String.format("%02x", data) == "02") {
+        if (String.format("%02x", data) == "02" && isFallDetected.value == true) {
             textToSpeech("지팡이를 다시 잡으셨군요. 안전 보행 하세요.")
-            isFallDetected.value = false
+            isFallDetected.postValue(false)
+
         }
     }
 
     /**
      * 긴급 SOS 호출을 하는 메세지 전송을 위한 메소드
      * - 낙상 지 20초 카운트 다운이 끝났을 때 발동
+     * - 현재 사용자의 위치 (주소) 를 담아 긴급 SMS 전송
      */
-    fun sendSMS(){
+    fun sendSMS() {
         val addressText = currentAddress.value
-        val smsText = "${addressText} -> 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
+        val smsText = "$addressText -> 위치에서 시각 장애인인 제가 낙상되었습니다. 응급 출동 바랍니다."
         val smsManager = SmsManager.getDefault()
         smsManager.sendTextMessage("01023813473", null, smsText, null, null)
     }

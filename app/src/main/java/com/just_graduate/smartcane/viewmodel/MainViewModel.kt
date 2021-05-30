@@ -9,6 +9,7 @@ import com.just_graduate.smartcane.util.Util
 import com.just_graduate.smartcane.Repository
 import com.just_graduate.smartcane.data.SegmentationResponse
 import com.just_graduate.smartcane.util.*
+import com.just_graduate.smartcane.util.Util.textToSpeech
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -53,7 +54,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         get() = repository.isFallDetected
 
     // 낙상 감지 시 20초 카운트 다운 실행 (만약 카운트다운이 완료되면, SOS 호출)
-    val countDown: CountDownTimer = object : CountDownTimer(20000, 1000){
+    private val countDown: CountDownTimer = object : CountDownTimer(20000, 1000) {
         override fun onTick(millisUntilFinished: Long) {
             Timber.d(millisUntilFinished.toString())
         }
@@ -61,7 +62,9 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
         // 119로 SMS 전송 (긴급 상황)
         override fun onFinish() {
             repository.sendSMS()
-            isFallDetected.value = false
+            Timber.d("카운트 완료 - SOS 호출")
+            textToSpeech("긴급 상황입니다. SOS 를 호출합니다.")
+            isFallDetected.postValue(false)
         }
     }
 
@@ -141,7 +144,7 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
      * 만약 지팡이를 다시 쥐었다는 신호를 받으면
      * CountDownTimer 종료 cancel()
      */
-    fun cancelCountDown(){
+    fun cancelCountDown() {
         countDown.cancel()
     }
 

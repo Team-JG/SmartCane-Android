@@ -359,7 +359,10 @@ class MainActivity : AppCompatActivity() {
             viewModel.setInProgress(false)
         })
 
-        // SegmentationResult 를 담는 LiveData 옵저빙 -> 값 바뀔 때마다 해석 실행
+        /**
+         * SegmentationResult 를 담는 LiveData 옵저빙
+         * - 값 바뀔 때마다 (API 호출 시마다) 결과 해석 메소드 실행 (TTS 재생)
+         */
         viewModel.segmentationResult.observe(
                 this@MainActivity,
                 {
@@ -367,15 +370,19 @@ class MainActivity : AppCompatActivity() {
                 }
         )
 
-        // 아두이노 (지팡이) 낙상 감지 이벤트
+        /**
+         * 아두이노 (지팡이) 낙상 감지 이벤트 관찰
+         * - true -> 낙상 감지 데이터 수신, 20초 카운트 다운 시작 (완료 시 SOS 호출)
+         * - false -> 사용자가 다시 지팡이를 잡았다는 데이터 수신, 카운트 다운 중지
+         */
         viewModel.isFallDetected.observe(this, {
-            if (it == true) {
-                viewModel.startCountDown()
-            } else{
-                viewModel.cancelCountDown()
-            }
+            if (it == true) viewModel.startCountDown()
+            else viewModel.cancelCountDown()
         })
 
+        /**
+         * 사용자의 위치를 10초 주기로 업데이트하기 위한 LocationManager 초기화
+         */
         viewModel.initLocationManager(context = this)
     }
 
@@ -454,10 +461,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
     }
 
     override fun onPause() {
