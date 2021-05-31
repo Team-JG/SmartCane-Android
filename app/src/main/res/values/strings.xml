@@ -9,4 +9,5 @@
     <string name="finding_cane">지팡이를 찾고 있습니다</string>
     <string name="plz_able_bt">블루투스를 활성화 해주세요</string>
     <string name="bt_disable">블루투스를 지원하지 않는 기기 입니다</string>
+    <string name="inference_result_title">Inference Result</string>
 </resources>

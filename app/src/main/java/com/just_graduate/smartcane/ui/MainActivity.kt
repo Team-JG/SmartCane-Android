@@ -48,6 +48,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import org.koin.android.ext.android.bind
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import timber.log.Timber
 import java.io.*
@@ -139,41 +140,31 @@ class MainActivity : AppCompatActivity() {
                         // MultipartBody 로 만들어주기 위해 File 객체로 변환
                         val bitmap = imageProxyToBitmap(image)
 
-                        Glide
-                                .with(this@MainActivity)
-                                .load(bitmap)
-                                .centerCrop()
-                                .into(binding.captureResult)
-
                         showToast("Capture Succeeded: $image")
-
-                        Glide.with(this@MainActivity)
-                                .load(bitmap)
-                                .into(binding.captureResult)
 
 //                     TF Lite 모델에 이미지 입력
 //                        imageClassifier.classifyAsync(bitmap)
 //                                .addOnSuccessListener { result ->
 //                                    Log.d(TAG, "SUCCESS!")
 //                                    Log.d(TAG, result.itemsFound.toString())
-//                                    binding.captureResult.setImageBitmap(result.bitmapResult)
+//                                    binding.segmentationResultTextView.text = result.itemsFound.keys.toString()
 //                                    bitmap.recycle()
 //                                }
 //                                .addOnFailureListener { e ->
 //                                    Log.e(TAG, "ERROR")
 //                                }
-//                        super.onCaptureSuccess(image)
 
                         val body: MultipartBody.Part = buildImageBodyPart(bitmap)
                         // Semantic Segmentation API 호출
                         viewModel.getSegmentationResult(body)
 
                         image.close()
+                        super.onCaptureSuccess(image)
+
                     }
                 }
         )
     }
-
 
     /**
      * Retrofit 을 통해 이미지 POST API 구현을 하기 위해서는,
@@ -213,7 +204,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: IOException) {
             e.printStackTrace()
         }
-        bitmap.recycle()
+//        bitmap.recycle()
         return file
     }
 
@@ -229,21 +220,12 @@ class MainActivity : AppCompatActivity() {
                 val resultUri = result.uri
                 val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, resultUri)
 
-                Glide
-                        .with(this)
-                        .load(resultUri)
-                        .centerCrop()
-                        .into(binding.captureResult)
-
 //                imageClassifier.classifyAsync(bitmap)
 //                        .addOnSuccessListener {
 //                            Log.d(TAG, "SUCCESS!")
 //                            Log.d(TAG, it.itemsFound.toString())
-//                            try {
-//                                binding.captureResult.setImageBitmap(it.bitmapResult)
-//                            } catch (e: Exception) {
-//                                Log.e(TAG, e.message!!)
-//                            }
+//                            binding.segmentationResultTextView.text = it.itemsFound.keys.toString()
+//                            bitmap.recycle()
 //                        }
 //                        .addOnFailureListener { e ->
 //                            Log.e(TAG, "ERROR")
@@ -435,6 +417,7 @@ class MainActivity : AppCompatActivity() {
         message += "있습니다. 주의하세요."
         Timber.d(message)
         textToSpeech(message)  // Text-To-Speech 로 만들어진 메세지 재생
+        binding.segmentationResultTextView.text = message
     }
 
 

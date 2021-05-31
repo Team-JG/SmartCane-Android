@@ -17,6 +17,7 @@ import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
+import timber.log.Timber
 import java.io.FileInputStream
 import java.io.IOException
 import java.lang.IllegalStateException
@@ -63,7 +64,7 @@ class ImageClassifier(private val context: Context) {
     private fun initializeInterpreter() {
         val compatList = CompatibilityList()
         val options = Interpreter.Options().apply {
-            this.setNumThreads(8)
+            this.setNumThreads(16)
         }
 
         val model: MappedByteBuffer = FileUtil.loadMappedFile(context, MODEL_FILE)
@@ -71,12 +72,8 @@ class ImageClassifier(private val context: Context) {
 
         val inputShape = interpreter.getInputTensor(0).shape()
 
-        inputShape.forEach {
-            Log.d("FXXK", it.toString())  // 1, 272, 480, 3
-        }
-
-        inputImageWidth = inputShape[1]
-        inputImageHeight = inputShape[2]
+        inputImageWidth = inputShape[2]
+        inputImageHeight = inputShape[1]
         modelInputSize = FLOAT_TYPE_SIZE * inputImageWidth * inputImageHeight * PIXEL_SIZE
 
         this.interpreter = interpreter
@@ -101,10 +98,11 @@ class ImageClassifier(private val context: Context) {
 
         var startTime: Long = System.nanoTime()
         val scaledBitmap =
-            ImageUtils.scaleBitmapAndKeepRatio(
-                bitmap,
-                inputImageWidth, inputImageHeight
-            )
+                ImageUtils.scaleBitmapAndKeepRatio(
+                        bitmap,
+                        inputImageWidth, inputImageHeight
+                )
+//        bitmap.recycle()
 
 //        val byteBuffer =
 //            ImageUtils.bitmapToByteBuffer(
@@ -118,36 +116,30 @@ class ImageClassifier(private val context: Context) {
         val byteBuffer = convertBitmapToByteBuffer(scaledBitmap)
 
         var elapsedTime: Long = (System.nanoTime() - startTime) / 1000000
-        Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
+        Timber.d("Preprocessing time = " + elapsedTime + "ms")
 
         val inputSize = inputImageWidth * inputImageHeight
-        Log.d(TAG, inputSize.toString())
+        Timber.d(inputSize.toString())
 
         startTime = System.nanoTime()
 
-        val probBuffer =
-            ByteBuffer.allocateDirect(1 * inputImageWidth * inputImageHeight * NUM_CLASSES * 4)
-        interpreter?.run(byteBuffer.buffer, probBuffer)
+        interpreter?.run(byteBuffer.buffer, segmentationMasks)
 
         val (maskImageApplied, maskOnly, itemsFound) =
-            convertByteBufferMaskToBitmap(
-                segmentationMasks, inputImageWidth, inputImageHeight, scaledBitmap,
-                segmentColors
-            )
-
+                convertByteBufferMaskToBitmap(
+                        segmentationMasks, inputImageWidth, inputImageHeight, scaledBitmap,
+                        segmentColors
+                )
 
         elapsedTime = (System.nanoTime() - startTime) / 1000000
 
         Log.d(TAG, "Preprocessing time = " + elapsedTime + "ms")
 
-        val result = probBuffer
-        Log.d("FXXK", probBuffer.toString())
-
         return ModelExecutionResult(
-            maskImageApplied,
-            scaledBitmap,
-            maskOnly,
-            itemsFound
+                maskImageApplied,
+                scaledBitmap,
+                maskOnly,
+                itemsFound
         )
     }
 
@@ -176,7 +168,7 @@ class ImageClassifier(private val context: Context) {
 
         tImage.load(bitmap)
         tImage = imageProcessor.process(tImage)
-        bitmap.recycle()
+//        bitmap.recycle()
 
         return tImage
     }
@@ -201,11 +193,21 @@ class ImageClassifier(private val context: Context) {
                 imageWidth,
                 imageHeight
             )
+
         val itemsFound = HashMap<String, Int>()
         inputBuffer.rewind()
 
+        Timber.d(imageHeight.toString())
+        Timber.d(imageWidth.toString())
+
         for (y in 0 until imageHeight) {
+            if (y == 480){
+                break
+            }
             for (x in 0 until imageWidth) {
+                if (x == 272){
+                    break
+                }
                 var maxVal = 0f
                 mSegmentBits[x][y] = 0
 
@@ -220,9 +222,6 @@ class ImageClassifier(private val context: Context) {
                 val label = labelsArrays[mSegmentBits[x][y]]
                 val color = colors[mSegmentBits[x][y]]
                 itemsFound.put(label, color)
-                itemsFound.forEach{
-                    Log.d(TAG, it.toString())
-                }
                 val newPixelColor = ColorUtils.compositeColors(
                     colors[mSegmentBits[x][y]],
                     scaledBackgroundImage.getPixel(x, y)
