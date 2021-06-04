@@ -56,7 +56,9 @@ import timber.log.Timber
 import java.io.*
 import java.lang.Exception
 import java.nio.ByteBuffer
+import java.util.*
 import java.util.concurrent.ExecutorService
+import kotlin.concurrent.timer
 import kotlin.random.Random
 
 
@@ -66,6 +68,7 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var binding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
+    private var timerTask: Timer? = null
 
     private var imageClassifier = ImageClassifier(this)
 
@@ -74,6 +77,7 @@ class MainActivity : AppCompatActivity() {
 
         // View Component 들이 ViewModel Observing 시작
         initObserving()
+
         // Camera X 인스턴스 초기화
         startCamera()
 
@@ -115,6 +119,21 @@ class MainActivity : AppCompatActivity() {
         binding.loadImageButton.setOnClickListener {
             loadImage()
         }
+
+        /**
+         * Walking Mode
+         * - ON : 5초에 한 번 전방을 촬영하고 API 를 호출하는 모드 시작
+         * - OFF : 해당 모드를 종료
+         */
+        binding.walkingModeButton.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (isChecked) {
+                timerTask = timer(period = 5000) {
+                    takePhoto()
+                }
+            } else {
+                timerTask?.cancel()
+            }
+        }
     }
 
     // TODO : 실제 TF Lite 모델이 완성되면 해당 메소드를 특정 msec 간격으로 호출해야함 (최적화가 필요함, 현재 1회 추론에 약 7초로 매우 느림)
@@ -141,7 +160,7 @@ class MainActivity : AppCompatActivity() {
                         // MultipartBody 로 만들어주기 위해 File 객체로 변환
                         val bitmap = imageProxyToBitmap(image)
 
-                        showToast("Capture Succeeded: $image")
+                        Timber.d("Capture Succeeded: $image")
 
 //                     TF Lite 모델에 이미지 입력
 //                        imageClassifier.classifyAsync(bitmap)
@@ -399,6 +418,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         val frontObjects = mutableListOf<String>()
+
+        // 정면 아니더라도 좌측, 우측에 차도가 있으면 안내해줌
         var isThereRoadwayOnTheLeft = false
         var isThereRoadwayOnTheRight = false
 

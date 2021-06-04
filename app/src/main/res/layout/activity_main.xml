@@ -93,6 +93,14 @@
                             android:id="@+id/loadImageButton"
                             android:layout_width="100dp"
                             android:text="LOAD IMAGE"
+                            android:layout_marginEnd="8dp"
+                            android:layout_height="60dp"/>
+
+
+                        <androidx.appcompat.widget.AppCompatToggleButton
+                            android:layout_gravity="center"
+                            android:id="@+id/walkingModeButton"
+                            android:layout_width="100dp"
                             android:layout_height="60dp"/>
 
                     </LinearLayout>
