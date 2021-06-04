@@ -128,7 +128,9 @@ class MainViewModel(private val repository: Repository) : BaseViewModel() {
             data.catch { Timber.i(it) }
                     .flowOn(Dispatchers.IO)
                     .collect {
-                        _segmentationResult.value = it
+                        if (_segmentationResult.value?.equals(it) == true) {
+                            _segmentationResult.value = it
+                        }
                     }
         }
     }

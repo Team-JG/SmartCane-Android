@@ -445,7 +445,7 @@ class MainActivity : AppCompatActivity() {
         // TTS 안내를 할 Message 작성
         var message = ""
 
-        val labelNameMap = mapOf(CAUTION_ZONE to "가로수, 계단, 파손된 보도블럭 등의 주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도 및 골목길")
+        val labelNameMap = mapOf(CAUTION_ZONE to "가로수, 계단, 파손된 보도블럭 등의 주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "골목길 및 차도")
         if (frontObjects.size > 0) {
             message += "전방에 "
             // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가

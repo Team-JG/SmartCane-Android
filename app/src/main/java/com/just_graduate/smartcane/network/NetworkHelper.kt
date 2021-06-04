@@ -12,7 +12,7 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 object NetworkHelper {
-    private const val serverBaseUrl = "http://3.35.41.241:80/"
+    private const val serverBaseUrl = "http://3.36.226.184:80"
 
     var token: String = ""
 
@@ -23,7 +23,6 @@ object NetworkHelper {
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.NONE
             })
-
             .addInterceptor {
                 // Request
                 val request = it.request()
