@@ -31,8 +31,10 @@ import com.bumptech.glide.Glide
 import com.just_graduate.smartcane.Constants.CAUTION_ZONE
 import com.just_graduate.smartcane.Constants.CROSS_WALK
 import com.just_graduate.smartcane.Constants.FRONT
+import com.just_graduate.smartcane.Constants.LEFT
 import com.just_graduate.smartcane.Constants.PERMISSIONS
 import com.just_graduate.smartcane.Constants.REQUEST_ALL_PERMISSION
+import com.just_graduate.smartcane.Constants.RIGHT
 import com.just_graduate.smartcane.Constants.ROAD_WAY
 import com.just_graduate.smartcane.data.DetectedObject
 import com.just_graduate.smartcane.data.SegmentationResponse
@@ -65,7 +67,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
 
-    private lateinit var cameraExecutor: ExecutorService
     private var imageClassifier = ImageClassifier(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -384,39 +385,87 @@ class MainActivity : AppCompatActivity() {
      * 서버에서 응답받은 Image Semantic Segmentation 결과를 해석하는 메소드
      * - 왼쪽, 정면, 오른쪽 각각에 어떤 레이블이 존재하는지에 대해 정리
      * - 이후, 정리된 결과값을 통해 TTS 호출 동작 구현
+     *
+     *  TTS Warning Logic
+     *  1) 정면에 위치한 레이블은 모두 안내를 한다
+     *  2) 만약 좌측, 우측에 차도가 있다면 이에 대해서도 안내를 한다
      */
     private fun interpretImageSegmentationResult(data: SegmentationResponse) {
         val result: List<DetectedObject> = data.result
         if (result.isEmpty()) {
             Timber.d("감지된 객체 없음")
+            binding.segmentationResultTextView.text = "안전한 보행 구역입니다"
             return
         }
 
+        val frontObjects = mutableListOf<String>()
+        var isThereRoadwayOnTheLeft = false
+        var isThereRoadwayOnTheRight = false
+
         result.forEach {
             Timber.d("direction : ${it.direction}, object : ${it.label}")
-        }
-
-        var message = "전방에 "
-        val labelNameMap = mapOf(CAUTION_ZONE to "가로수, 맨홀 뚜껑 등의 주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "골목길 혹은 차도")
-        // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
-        result.forEachIndexed { index, it ->
-            if (index == result.size - 1) {
-                message += if (it === result[result.size - 1]) {
-                    // 적절한 주격조사를 붙이기 위해 '주의 구역'만
-                    if (it.label == CAUTION_ZONE) {
-                        "${labelNameMap[it.label]}이 "
-                    } else {
-                        "${labelNameMap[it.label]}가 "
+            when (it.direction) {
+                FRONT -> {
+                    frontObjects.add(it.label)
+                }
+                LEFT -> {
+                    if (it.label == ROAD_WAY) {
+                        isThereRoadwayOnTheLeft = true
                     }
-                } else {
-                    "${labelNameMap[it.label]}, 그리고"
+                }
+                RIGHT -> {
+                    if (it.label == ROAD_WAY) {
+                        isThereRoadwayOnTheRight = true
+                    }
                 }
             }
         }
 
-        message += "있습니다. 주의하세요."
+        // TTS 안내를 할 Message 작성
+        var message = ""
+
+        val labelNameMap = mapOf(CAUTION_ZONE to "가로수, 계단, 파손된 보도블럭 등의 주의 구역", CROSS_WALK to "횡단보도", ROAD_WAY to "차도 및 골목길")
+        if (frontObjects.size > 0) {
+            message += "전방에 "
+            // 정면 (front) 에 주의 구역, 횡단보도, 차도 등이 감지되면 TTS 메세지에 추가
+            frontObjects.forEachIndexed { index, it ->
+                message += if (it === frontObjects[frontObjects.size - 1]) {
+                    // 적절한 주격조사를 붙이기 위해 '주의 구역'만 '이'를 붙여줌
+                    if (it == CAUTION_ZONE) {
+                        "${labelNameMap[it]}이 "
+                    } else {
+                        "${labelNameMap[it]}가 "
+                    }
+                } else {
+                    "${labelNameMap[it]}, 그리고"
+                }
+            }
+            message += "있습니다. "
+        }
+
+        if (frontObjects.isNotEmpty()) {
+            if (isThereRoadwayOnTheLeft and isThereRoadwayOnTheRight) {
+                message += "그리고 좌측 및 우측에 차도가 있습니다."
+            } else if (isThereRoadwayOnTheLeft and !isThereRoadwayOnTheRight) {
+                message += "그리고 좌측에 차도가 있습니다."
+            } else if (!isThereRoadwayOnTheLeft and isThereRoadwayOnTheRight) {
+                message += "그리고 우측에 차도가 있습니다."
+            }
+        } else {
+            if (isThereRoadwayOnTheLeft and isThereRoadwayOnTheRight) {
+                message += "좌측 및 우측에 차도가 있습니다."
+            } else if (isThereRoadwayOnTheLeft and !isThereRoadwayOnTheRight) {
+                message += "좌측에 차도가 있습니다."
+            } else if (!isThereRoadwayOnTheLeft and isThereRoadwayOnTheRight) {
+                message += "우측에 차도가 있습니다."
+            }
+        }
+
+        message += "주의하세요"
+
         Timber.d(message)
         textToSpeech(message)  // Text-To-Speech 로 만들어진 메세지 재생
+
         binding.segmentationResultTextView.text = message
     }
 
@@ -460,17 +509,11 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.unregisterReceiver()
-
-//        cameraExecutor.shutdown()
     }
 
     override fun onBackPressed() {
         // super.onBackPressed()
         viewModel.setInProgress(false)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 
     companion object {
