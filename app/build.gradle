@@ -12,14 +12,19 @@ android {
     compileSdkVersion 30
     buildToolsVersion "30.0.1"
 
+
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    def keystoreProperties = new Properties()
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
     defaultConfig {
         applicationId "com.just_graduate.smartcane"
         minSdkVersion 23
         targetSdkVersion 30
         versionCode 1
         versionName "1.0"
-
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "BASE_URL", keystoreProperties["BASE_URL"]
     }
 
     aaptOptions {
